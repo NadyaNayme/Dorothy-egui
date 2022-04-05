@@ -7,6 +7,6 @@
 
 fn main() {
     let app = dorothy::Dorothy::new();
-    let mut native_options = eframe::NativeOptions::default();
+    let native_options = eframe::NativeOptions::default();
     eframe::run_native(Box::new(app), native_options);
 }

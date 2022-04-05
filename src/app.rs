@@ -1,32 +1,17 @@
 use std::{
     f32::INFINITY,
-    fmt::{self, Display},
+    fmt::{self},
 };
 
 use chrono::{DateTime, Local};
 use eframe::{
     egui::{self, RichText, Visuals},
     epaint::Color32,
-    epi, NativeOptions,
+    epi,
 };
-use image;
 
 #[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "persistence", serde(default))]
-
-pub fn load_icon(icon_bytes: &Vec<u8>) -> Option<epi::IconData> {
-    if let Ok(image) = image::load_from_memory(icon_bytes) {
-        let image = image.to_rgba8();
-        let (width, height) = image.dimensions();
-        Some(epi::IconData {
-            width,
-            height,
-            rgba: image.as_raw().to_vec(),
-        })
-    } else {
-        None
-    }
-}
 
 pub fn get_time() -> String {
     let logged_time: DateTime<Local> = Local::now();
@@ -217,10 +202,6 @@ impl Dorothy {
             pbhl_honors: PBHLHonors::Ignore,
         }
     }
-    fn icon_data(&self) -> Option<epi::IconData> {
-        let icon_bytes = include_bytes!("./images/dorothy.ico");
-        load_icon(&icon_bytes.to_vec())
-    }
 }
 
 impl epi::App for Dorothy {
@@ -247,12 +228,13 @@ impl epi::App for Dorothy {
         epi::set_value(storage, epi::APP_KEY, self);
     }
 
+    #[allow(unused_variables)]
     fn update(&mut self, ctx: &egui::Context, frame: &epi::Frame) {
         let Self {
             name,
             config,
             droplog,
-            pbhl_honors: PBHLHonors,
+            pbhl_honors: pbhlhonors,
         } = self;
 
         if self.config.dark_mode {
