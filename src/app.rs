@@ -1,4 +1,3 @@
-#[feature(drain_filter)]
 use crate::*;
 use confy;
 use eframe::{
@@ -93,10 +92,11 @@ impl epi::App for AppDorothy {
                 let _ = confy::store("dorothy-egui", &local_settings_copy);
             }
 
+            #[cfg(target_family = "windows")]
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("Export").clicked() {
-                        export(local_settings_copy.droplog.clone());
+                        let _ = export(local_settings_copy.droplog.clone());
                         if local_settings_copy.app_settings.reset_on_export {
                             self.config.droplog.drop = DropLog::reset();
                             local_settings_copy.droplog.drop = DropLog::reset();

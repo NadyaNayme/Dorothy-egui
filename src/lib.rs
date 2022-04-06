@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-#![cfg_attr(not(debug_assertions), deny(warnings))]
+//#![cfg_attr(not(debug_assertions), deny(warnings))]
 #![warn(clippy::all, rust_2018_idioms)]
 #![feature(derive_default_enum)]
 #![feature(drain_filter)]
@@ -36,11 +36,13 @@ pub fn get_percentage(x: f32, y: f32) -> String {
     return format!("{:.2}%", result);
 }
 
+#[cfg(target_family = "windows")]
 pub fn create_path(path: &str) -> std::io::Result<()> {
     fs::create_dir(path)?;
     Ok(())
 }
 
+#[cfg(target_family = "windows")]
 pub fn export(droplog: DropLog) -> Result<(), Box<dyn Error>> {
     let logged_drops = droplog.drop.iter().count().to_string();
     let export_time: DateTime<Local> = Local::now();
@@ -286,13 +288,15 @@ impl DorothyConfig {
 
 #[cfg(target_arch = "wasm32")]
 use eframe::wasm_bindgen::{self, prelude::*};
+use crate::{app::AppDorothy, AppSettings};
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 pub fn start(canvas_id: &str) -> Result<(), eframe::wasm_bindgen::JsValue> {
+
     console_error_panic_hook::set_once();
     tracing_wasm::set_as_global_default();
 
-    let app = AppDorothy::default();
+    let app = AppDorothy::new();
     eframe::start_web(canvas_id, Box::new(app))
 }

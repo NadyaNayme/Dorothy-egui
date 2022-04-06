@@ -1,6 +1,6 @@
 [package]
 name = "dorothy"
-default-run = "dorothy_bin"
+default-run = "dorothy-egui_bin"
 version = "0.0.8"
 authors = ["Nadya Nayme <admin@aishitei.ru>"]
 edition = "2021"
@@ -9,7 +9,7 @@ rust-version = "1.56"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [[bin]]
-name = "dorothy_bin"
+name = "dorothy-egui_bin"
 path = "src/main.rs"
 
 [lib]
@@ -21,8 +21,10 @@ confy = "0.4.0"
 csv = "1.1"
 eframe = { version =  "0.17.0", features = ["persistence"] }
 image = "0.24.1"
-open = "2.1"
 serde = { version = "1.0", features = ["derive"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+open = "2.1"
 
 [profile.release]
 opt-level = 2 # fast and small wasm
