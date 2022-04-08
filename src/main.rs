@@ -5,12 +5,13 @@
 #![feature(derive_default_enum)]
 #![feature(drain_filter)]
 
+use dorothy::DOROTHY;
 #[cfg(not(target_arch = "wasm32"))]
 use dorothy::app::AppDorothy;
 use eframe::epi::IconData;
 
 fn main() -> Result<(), confy::ConfyError> {
-    let dorothy_icon: Vec<u8> = image::open("C:/Github/Dorothy-egui/src/images/dorothy.png")
+    let dorothy_icon: Vec<u8> = image::load_from_memory(DOROTHY)
         .unwrap()
         .into_rgba8()
         .to_vec();

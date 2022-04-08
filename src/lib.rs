@@ -32,6 +32,7 @@ pub static P_MARK_1: &[u8] = include_bytes!("./images/weapon_plus_mark_1.png");
 pub static P_MARK_2: &[u8] = include_bytes!("./images/weapon_plus_mark_2.png");
 pub static P_MARK_3: &[u8] = include_bytes!("./images/weapon_plus_mark_3.png");
 pub static GOLD_BAR: &[u8] = include_bytes!("./images/hihi.png");
+pub static DOROTHY: &[u8] = include_bytes!("./images/dorothy.ico");
 
 pub fn get_time() -> String {
     let logged_time: DateTime<Local> = Local::now();
