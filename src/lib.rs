@@ -11,17 +11,26 @@ use std::{f32::INFINITY, fmt};
 
 use chrono::{DateTime, Local};
 use csv;
-use eframe::egui::{self, Context};
-use eframe::epaint::{ColorImage, TextureHandle};
+use eframe::egui::{self, widgets, Response, Sense, Ui, Widget, WidgetInfo, WidgetType};
+use eframe::epaint::{ColorImage, Rounding, TextureId, Vec2};
 use serde::{Deserialize, Serialize};
 
 pub mod app;
 
 pub static BLUE_CHEST: &[u8] = include_bytes!("./images/blue_chest.png");
 pub static NO_BLUE_CHEST: &[u8] = include_bytes!("./images/no_blue_chest.png");
+pub static SILVER_CENTRUM: &[u8] = include_bytes!("./images/silver_centrum.png");
+pub static HOLLOW_KEY: &[u8] = include_bytes!("./images/hollow_key.png");
+pub static VERDANT_AZURITE: &[u8] = include_bytes!("./images/verdant_azurite.png");
 pub static C_RING: &[u8] = include_bytes!("./images/coronation_ring.png");
 pub static L_RING: &[u8] = include_bytes!("./images/lineage_ring.png");
 pub static I_RING: &[u8] = include_bytes!("./images/intricacy_ring.png");
+pub static C_MERIT: &[u8] = include_bytes!("./images/champion_merit.png");
+pub static S_MERIT: &[u8] = include_bytes!("./images/supreme_merit.png");
+pub static L_MERIT: &[u8] = include_bytes!("./images/legendary_merit.png");
+pub static P_MARK_1: &[u8] = include_bytes!("./images/weapon_plus_mark_1.png");
+pub static P_MARK_2: &[u8] = include_bytes!("./images/weapon_plus_mark_2.png");
+pub static P_MARK_3: &[u8] = include_bytes!("./images/weapon_plus_mark_3.png");
 pub static GOLD_BAR: &[u8] = include_bytes!("./images/hihi.png");
 
 pub fn get_time() -> String {
@@ -61,10 +70,21 @@ pub fn load_image_from_memory(image_data: &[u8]) -> Result<ColorImage, image::Im
     let size = [image.width() as _, image.height() as _];
     let image_buffer = image.to_rgba8();
     let pixels: image::FlatSamples<&[u8]> = image_buffer.as_flat_samples();
-    Ok(ColorImage::from_rgba_unmultiplied(
-        size,
-        pixels.as_slice(),
-    ))
+    Ok(ColorImage::from_rgba_unmultiplied(size, pixels.as_slice()))
+}
+
+pub fn load_icon(icon_bytes: &Vec<u8>) -> Option<epi::IconData> {
+    if let Ok(image) = image::load_from_memory(icon_bytes) {
+        let image = image.to_rgba8();
+        let (width, height) = image.dimensions();
+        Some(epi::IconData {
+            width,
+            height,
+            rgba: image.as_raw().to_vec(),
+        })
+    } else {
+        None
+    }
 }
 
 #[cfg(target_family = "windows")]
@@ -294,6 +314,9 @@ pub struct DorothyConfig {
     pub reset_on_export: bool,
     pub droprate_by_kills: bool,
     pub show_all_drops: bool,
+    pub toggle_active_items: bool,
+    pub active_items: [bool; 32],
+    pub button_label_combo: [bool; 2],
     pub crystals_amount: String,
     pub ten_pulls_amount: String,
     pub single_pulls_amount: String,
@@ -313,6 +336,9 @@ impl Default for DorothyConfig {
             reset_on_export: true,
             droprate_by_kills: false,
             show_all_drops: false,
+            toggle_active_items: false,
+            active_items: [true; 32],
+            button_label_combo: [true; 2],
             current_ui_tab: UiTab::Akasha,
             crystals_amount: "0".to_string(),
             ten_pulls_amount: "0".to_string(),
@@ -333,6 +359,9 @@ impl DorothyConfig {
             reset_on_export: true,
             droprate_by_kills: false,
             show_all_drops: false,
+            toggle_active_items: false,
+            active_items: [true; 32],
+            button_label_combo: [true; 2],
             current_ui_tab: UiTab::Akasha,
             crystals_amount: "0".to_string(),
             ten_pulls_amount: "0".to_string(),
@@ -342,28 +371,106 @@ impl DorothyConfig {
     }
 }
 
-#[derive(PartialEq, Default, Clone)]
-pub struct ItemImage {
-    texture: Option<egui::TextureHandle>,
+#[derive(Clone, Debug)]
+pub struct CustomImageButton {
+    image: widgets::Image,
+    sense: Sense,
+    frame: bool,
+    selected: bool,
 }
 
-impl ItemImage {
-   pub fn ui(&mut self, image_name: &str, image: &[u8], ui: &mut egui::Ui) {
-        let image = load_image_from_memory(image).unwrap();
-        let texture: &egui::TextureHandle = self.texture.get_or_insert_with(|| {
-            ui.ctx().load_texture(image_name, image)
-        });
-        ui.image(texture, texture.size_vec2());
+impl CustomImageButton {
+    pub fn new(texture_id: impl Into<TextureId>, size: impl Into<Vec2>) -> Self {
+        Self {
+            image: widgets::Image::new(texture_id, size),
+            sense: Sense::click(),
+            frame: false,
+            selected: false,
+        }
     }
 
-   pub fn texture(&mut self, image_name: &str, image: &[u8], ui: &mut egui::Ui) -> &TextureHandle {
-        let image = load_image_from_memory(image).unwrap();
-        let texture: &egui::TextureHandle = self.texture.get_or_insert_with(|| {
-            ui.ctx().load_texture(image_name, image)
-        });
-        texture
+    /// If `true`, mark this button as "selected".
+    pub fn selected(mut self, selected: bool) -> Self {
+        self.selected = selected;
+        self
     }
 
+    /// Turn off the frame
+    pub fn frame(mut self, frame: bool) -> Self {
+        self.frame = frame;
+        self
+    }
+
+    /// By default, buttons senses clicks.
+    /// Change this to a drag-button with `Sense::drag()`.
+    pub fn sense(mut self, sense: Sense) -> Self {
+        self.sense = sense;
+        self
+    }
+}
+
+impl Widget for CustomImageButton {
+    fn ui(self, ui: &mut Ui) -> Response {
+        let Self {
+            image,
+            sense,
+            frame,
+            selected,
+        } = self;
+
+        let padding = if frame {
+            // so we can see that it is a button:
+            Vec2::splat(ui.spacing().button_padding.x)
+        } else {
+            Vec2::ZERO
+        };
+        let padded_size = image.size() + 2.0 * padding;
+        let (rect, response) = ui.allocate_exact_size(padded_size, sense);
+        response.widget_info(|| WidgetInfo::new(WidgetType::ImageButton));
+
+        if ui.is_rect_visible(rect) {
+            let (expansion, rounding, fill, stroke) = if selected {
+                let selection = ui.visuals().selection;
+                (
+                    -padding,
+                    Rounding::none(),
+                    selection.bg_fill,
+                    selection.stroke,
+                )
+            } else if frame {
+                let visuals = ui.style().interact(&response);
+                let expansion = if response.hovered() {
+                    Vec2::splat(visuals.expansion) - padding
+                } else {
+                    Vec2::splat(visuals.expansion)
+                };
+                (
+                    expansion,
+                    visuals.rounding,
+                    visuals.bg_fill,
+                    visuals.bg_stroke,
+                )
+            } else {
+                Default::default()
+            };
+
+            // Draw frame background (for transparent images):
+            ui.painter()
+                .rect_filled(rect.expand2(expansion), rounding, fill);
+
+            let image_rect = ui
+                .layout()
+                .align_size_within_rect(image.size(), rect.shrink2(padding));
+            // let image_rect = image_rect.expand2(expansion); // can make it blurry, so let's not
+            image.paint_at(ui, image_rect);
+
+            // Draw frame outline:
+            ui.painter()
+                .rect_stroke(rect.expand2(expansion), rounding, stroke);
+        }
+
+        response
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
