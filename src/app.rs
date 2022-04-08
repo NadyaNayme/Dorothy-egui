@@ -2,11 +2,12 @@ use crate::*;
 use confy;
 use eframe::{
     egui::{self, RichText, Visuals},
-    epaint::Color32,
+    epaint::{Color32, Vec2},
     epi,
 };
+use egui_extras::RetainedImage;
 use serde::{Deserialize, Serialize};
-
+use image::{*, ImageError};
 #[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "persistence", serde(default))]
 #[derive(Default, Serialize, Deserialize)]
@@ -26,9 +27,9 @@ impl AppDorothy {
         let saved_droplog: DropLog = saved_config.droplog.clone();
         Self {
             name: "Dorothy".to_string(),
-            config: saved_config,
             droplog: saved_droplog,
             pbhl_honors: PBHLHonors::Ignore,
+            config: saved_config,
         }
     }
 
@@ -53,6 +54,7 @@ impl epi::App for AppDorothy {
         _frame: &epi::Frame,
         _storage: Option<&dyn epi::Storage>,
     ) {
+
         // Load previous app state (if any).
         #[cfg(feature = "persistence")]
         if let Some(storage) = _storage {
@@ -164,8 +166,9 @@ impl epi::App for AppDorothy {
                         .clicked()
                     {
                         local_settings_copy.app_settings.always_on_top =
-                            self.config.app_settings.always_on_top;
+                        self.config.app_settings.always_on_top;
                         let _ = confy::store("dorothy-egui", &local_settings_copy);
+                        frame.set_always_on_top(local_settings_copy.app_settings.always_on_top);
                     }
                     if ui
                         .checkbox(
@@ -217,8 +220,8 @@ impl epi::App for AppDorothy {
         });
         if self.config.app_settings.left_panel_visible {
             egui::SidePanel::left("left_side_panel")
-                .min_width(200.)
-                .max_width(300.)
+                .min_width(180.)
+                .max_width(200.)
                 .show(ctx, |ui| {
                     if ctx.is_pointer_over_area() {
                         local_settings_copy.app_settings.current_ui_tab =
@@ -230,7 +233,7 @@ impl epi::App for AppDorothy {
                     ui.heading("Drop Totals");
                     ui.add_space(3.);
                     ui.separator();
-                    ui.add_space(5.);
+                    ui.add_space(1.);
                     egui::ScrollArea::vertical()
                         .auto_shrink([false, false])
                         .max_height(INFINITY)
@@ -764,7 +767,7 @@ impl epi::App for AppDorothy {
                                     .droplog
                                     .drop
                                     .iter()
-                                    .filter(|x| x.raid == Raid::PBHL)
+                                    .filter(|x| x.raid == Raid::PBHL && x.chest == ChestType::Blue)
                                     .count();
                                 ui.heading("PBHL - ".to_owned() + &total_pbhl_drops.to_string());
                                 ui.add_space(5.);
@@ -966,13 +969,6 @@ impl epi::App for AppDorothy {
                                     .drop
                                     .iter()
                                     .filter(|x| x.item == Item::NoDrop && x.raid == Raid::GOHL)
-                                    .count()
-                                    .to_string();
-                                let no_drop = local_settings_copy
-                                    .droplog
-                                    .drop
-                                    .iter()
-                                    .filter(|x| x.item == Item::NoDrop && x.raid == Raid::Akasha)
                                     .count();
                                 if local_settings_copy.app_settings.droprate_by_kills {
                                     let no_drop_percent = format!(
@@ -995,7 +991,9 @@ impl epi::App for AppDorothy {
                                     .droplog
                                     .drop
                                     .iter()
-                                    .filter(|x| x.item == Item::HollowKey && x.raid == Raid::GOHL)
+                                    .filter(|x| {
+                                        x.item == Item::VerdantAzurite && x.raid == Raid::GOHL
+                                    })
                                     .count();
                                 if local_settings_copy.app_settings.droprate_by_kills {
                                     let verdant_azurite_percent = format!(
@@ -1346,6 +1344,7 @@ impl epi::App for AppDorothy {
                                     );
                                 }
                             }
+
                             if self.config.app_settings.current_ui_tab == UiTab::Hosts
                                 || self.config.app_settings.show_all_drops
                             {
@@ -1354,12 +1353,90 @@ impl epi::App for AppDorothy {
                                     .droplog
                                     .drop
                                     .iter()
-                                    .filter(|x| x.raid == Raid::UBHL || x.raid == Raid::Xeno)
-                                    .count()
-                                    .to_string();
-                                ui.heading("Hosts - ".to_owned() + &total_hosts_drops);
+                                    .filter(|x| x.chest == ChestType::Host || x.chest == ChestType::Flip)
+                                    .count();
+                                ui.heading("Hosts - ".to_owned() + &total_hosts_drops.to_string());
                                 ui.add_space(5.);
-                                ui.label("Coming Soon...");
+                                let ubhl_host_gold_brick_drops = local_settings_copy
+                                    .droplog
+                                    .drop
+                                    .iter()
+                                    .filter(|x| x.item == Item::GoldBrick && x.raid == Raid::UBHL && x.chest == ChestType::Host)
+                                    .count();
+                                    let ubhl_host_gold_brick_percent = format!(
+                                        "{:.1$}%",
+                                        ((ubhl_host_gold_brick_drops as f32 / total_hosts_drops as f32)
+                                            * 100.)
+                                            .to_string(),
+                                        3
+                                    );
+                                    ui.label(
+                                        "UBHL (Host): ".to_string()
+                                            + &ubhl_host_gold_brick_drops.to_string()
+                                            + " ("
+                                            + &ubhl_host_gold_brick_percent.to_string()
+                                            + ")",
+                                    );
+                                let ubhl_flip_gold_brick_drops = local_settings_copy
+                                    .droplog
+                                    .drop
+                                    .iter()
+                                    .filter(|x| x.item == Item::GoldBrick && x.raid == Raid::UBHL && x.chest == ChestType::Flip)
+                                    .count();
+                                    let ubhl_flip_gold_brick_percent = format!(
+                                        "{:.1$}%",
+                                        ((ubhl_flip_gold_brick_drops as f32 / total_hosts_drops as f32)
+                                            * 100.)
+                                            .to_string(),
+                                        3
+                                    );
+                                    ui.label(
+                                        "UBHL (Flip): ".to_string()
+                                            + &ubhl_flip_gold_brick_drops.to_string()
+                                            + " ("
+                                            + &ubhl_flip_gold_brick_percent.to_string()
+                                            + ")",
+                                    );
+                                let pbhl_host_gold_brick_drops = local_settings_copy
+                                    .droplog
+                                    .drop
+                                    .iter()
+                                    .filter(|x| x.item == Item::GoldBrick && x.raid == Raid::PBHL && x.chest == ChestType::Host)
+                                    .count();
+                                    let pbhl_host_gold_brick_percent = format!(
+                                        "{:.1$}%",
+                                        ((pbhl_host_gold_brick_drops as f32 / total_hosts_drops as f32)
+                                            * 100.)
+                                            .to_string(),
+                                        3
+                                    );
+                                    ui.label(
+                                        "PBHL (Host): ".to_string()
+                                            + &pbhl_host_gold_brick_drops.to_string()
+                                            + " ("
+                                            + &pbhl_host_gold_brick_percent.to_string()
+                                            + ")",
+                                    );
+                                let xeno_flip_gold_brick_drops = local_settings_copy
+                                    .droplog
+                                    .drop
+                                    .iter()
+                                    .filter(|x| x.item == Item::GoldBrick && x.raid == Raid::Xeno && x.chest == ChestType::Flip)
+                                    .count();
+                                    let xeno_flip_gold_brick_percent = format!(
+                                        "{:.1$}%",
+                                        ((xeno_flip_gold_brick_drops as f32 / total_hosts_drops as f32)
+                                            * 100.)
+                                            .to_string(),
+                                        3
+                                    );
+                                    ui.label(
+                                        "Xeno (Flip): ".to_string()
+                                            + &xeno_flip_gold_brick_drops.to_string()
+                                            + " ("
+                                            + &xeno_flip_gold_brick_percent.to_string()
+                                            + ")",
+                                    );
                             }
                         });
                 });
@@ -1367,8 +1444,8 @@ impl epi::App for AppDorothy {
 
         if self.config.app_settings.right_panel_visible {
             egui::SidePanel::right("right_side_panel")
-                .min_width(150.)
-                .max_width(300.)
+                .min_width(120.)
+                .max_width(180.)
                 .show(ctx, |ui| {
                     ui.heading("Recent Drops");
                     ui.add_space(5.);
@@ -1388,16 +1465,90 @@ impl epi::App for AppDorothy {
                             {
                                 ui.horizontal(|ui| {
                                     ui.spacing_mut().item_spacing.x = 0.0;
-                                    if drop.item == Item::GoldBrick && drop.raid != Raid::PBHL {
+                                    if drop.chest == ChestType::Host || drop.chest == ChestType::Flip && drop.item == Item::GoldBrick && drop.raid != Raid::Xeno {
                                         let mut gold_brick_text_color =
                                             Color32::from_rgb(255, 221, 26);
                                         if self.config.app_settings.dark_mode == false {
                                             gold_brick_text_color = Color32::from_rgb(187, 152, 10);
                                         }
                                         if ui
-                                            .button(
-                                                RichText::new(format!("{}", drop.item))
-                                                    .color(gold_brick_text_color),
+                                            .add(
+                                                egui::Label::new(
+                                                    RichText::new(format!("{}", drop.item))
+                                                        .color(gold_brick_text_color),
+                                                )
+                                                .sense(egui::Sense::click()),
+                                            )
+                                            .on_hover_text(format!(
+                                                "On {} from {} in a {}",
+                                                drop.date_obtained, drop.raid, drop.chest
+                                            ))
+                                            .clicked()
+                                        {
+                                            let _ = self
+                                                .config
+                                                .droplog
+                                                .drop
+                                                .retain(|x| x.drop_id != drop.drop_id);
+                                            let _ = local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .retain(|x| x.drop_id != drop.drop_id);
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                        ui.add_space(3.)
+                                    } else if drop.item == Item::GoldBrick
+                                        && drop.raid == Raid::PBHL
+                                        && drop.chest == ChestType::Blue
+                                    {
+                                        let mut gold_brick_text_color =
+                                            Color32::from_rgb(255, 221, 26);
+                                        if self.config.app_settings.dark_mode == false {
+                                            gold_brick_text_color = Color32::from_rgb(183, 138, 15);
+                                        }
+                                        if ui
+                                            .add(
+                                                egui::Label::new(
+                                                    RichText::new(format!("{}", drop.item))
+                                                        .color(gold_brick_text_color),
+                                                )
+                                                .sense(egui::Sense::click()),
+                                            )
+                                            .on_hover_text(format!(
+                                                "On {} from {} {}",
+                                                drop.date_obtained,
+                                                drop.raid,
+                                                drop.honors.as_ref().unwrap()
+                                            ))
+                                            .clicked()
+                                        {
+                                            let _ = self
+                                                .config
+                                                .droplog
+                                                .drop
+                                                .retain(|x| x.drop_id != drop.drop_id);
+                                            let _ = local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .retain(|x| x.drop_id != drop.drop_id);
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                        ui.add_space(3.)
+                                    } else if drop.item == Item::GoldBrick {
+                                        let mut gold_brick_text_color =
+                                            Color32::from_rgb(255, 221, 26);
+                                        if self.config.app_settings.dark_mode == false {
+                                            gold_brick_text_color = Color32::from_rgb(187, 152, 10);
+                                        }
+                                        if ui
+                                            .add(
+                                                egui::Label::new(
+                                                    RichText::new(format!("{}", drop.item))
+                                                        .color(gold_brick_text_color),
+                                                )
+                                                .sense(egui::Sense::click()),
                                             )
                                             .on_hover_text(format!(
                                                 "On {} from {}",
@@ -1418,67 +1569,12 @@ impl epi::App for AppDorothy {
                                                 confy::store("dorothy-egui", &local_settings_copy);
                                         }
                                         ui.add_space(3.)
-                                    } else if drop.item == Item::GoldBrick
-                                        && drop.raid == Raid::PBHL
-                                    {
-                                        let mut gold_brick_text_color =
-                                            Color32::from_rgb(255, 221, 26);
-                                        if self.config.app_settings.dark_mode == false {
-                                            gold_brick_text_color = Color32::from_rgb(183, 138, 15);
-                                        }
-                                        if ui
-                                            .button(
-                                                RichText::new(format!("{}", drop.item))
-                                                    .color(gold_brick_text_color),
-                                            )
-                                            .on_hover_text(format!(
-                                                "On {} from {} with around {} honors",
-                                                drop.date_obtained,
-                                                drop.raid,
-                                                drop.honors.as_ref().unwrap()
-                                            ))
-                                            .clicked()
-                                        {
-                                            let _ = self
-                                                .config
-                                                .droplog
-                                                .drop
-                                                .retain(|x| x.drop_id != drop.drop_id);
-                                            let _ = local_settings_copy
-                                                .droplog
-                                                .drop
-                                                .retain(|x| x.drop_id != drop.drop_id);
-                                            let _ =
-                                                confy::store("dorothy-egui", &local_settings_copy);
-                                        }
-                                        ui.add_space(3.)
-                                    } else if drop.raid == Raid::PBHL {
-                                        if ui
-                                            .button(format!("{}", drop.item))
-                                            .on_hover_text(format!(
-                                                "On {} from {} with around {} honors",
-                                                drop.date_obtained,
-                                                drop.raid,
-                                                drop.honors.as_ref().unwrap()
-                                            ))
-                                            .clicked()
-                                        {
-                                            let _ = self
-                                                .config
-                                                .droplog
-                                                .drop
-                                                .retain(|x| x.drop_id != drop.drop_id);
-                                            let _ = local_settings_copy
-                                                .droplog
-                                                .drop
-                                                .retain(|x| x.drop_id != drop.drop_id);
-                                            let _ =
-                                                confy::store("dorothy-egui", &local_settings_copy);
-                                        }
-                                        ui.add_space(3.)
                                     } else {
                                         if ui
-                                            .button(format!("{}", drop.item))
+                                            .add(
+                                                egui::Label::new(format!("{}", drop.item))
+                                                    .sense(egui::Sense::click()),
+                                            )
                                             .on_hover_text(format!(
                                                 "On {} from {}",
                                                 drop.date_obtained, drop.raid
@@ -1507,31 +1603,56 @@ impl epi::App for AppDorothy {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.selectable_value(
-                    &mut self.config.app_settings.current_ui_tab,
-                    UiTab::Pulls,
-                    "Pull Calculator",
-                );
-                ui.selectable_value(
-                    &mut self.config.app_settings.current_ui_tab,
-                    UiTab::Akasha,
-                    "Akasha",
-                );
-                ui.selectable_value(
-                    &mut self.config.app_settings.current_ui_tab,
-                    UiTab::PBHL,
-                    "PBHL",
-                );
-                ui.selectable_value(
-                    &mut self.config.app_settings.current_ui_tab,
-                    UiTab::GOHL,
-                    "GOHL",
-                );
-                ui.selectable_value(
-                    &mut self.config.app_settings.current_ui_tab,
-                    UiTab::Hosts,
-                    "Hosts",
-                );
+                if ui
+                    .selectable_value(
+                        &mut self.config.app_settings.current_ui_tab,
+                        UiTab::Pulls,
+                        "Pull Calculator",
+                    )
+                    .changed()
+                {
+                    frame.set_window_title("Dorothy - Pull Calculator");
+                };
+                if ui
+                    .selectable_value(
+                        &mut self.config.app_settings.current_ui_tab,
+                        UiTab::Akasha,
+                        "Akasha",
+                    )
+                    .changed()
+                {
+                    frame.set_window_title("Dorothy - Akasha");
+                };
+                if ui
+                    .selectable_value(
+                        &mut self.config.app_settings.current_ui_tab,
+                        UiTab::PBHL,
+                        "PBHL",
+                    )
+                    .changed()
+                {
+                    frame.set_window_title("Dorothy - PBHL");
+                };
+                if ui
+                    .selectable_value(
+                        &mut self.config.app_settings.current_ui_tab,
+                        UiTab::GOHL,
+                        "GOHL",
+                    )
+                    .changed()
+                {
+                    frame.set_window_title("Dorothy - GOHL");
+                };
+                if ui
+                    .selectable_value(
+                        &mut self.config.app_settings.current_ui_tab,
+                        UiTab::Hosts,
+                        "Hosts",
+                    )
+                    .changed()
+                {
+                    frame.set_window_title("Dorothy - Hosts");
+                };
             });
 
             ui.add_space(30.);
@@ -1625,573 +1746,1423 @@ impl epi::App for AppDorothy {
                         egui::Grid::new("akasha_item_grid")
                             .spacing((15., 20.))
                             .show(ui, |ui| {
-                                if ui.button("No Drop").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::NoDrop,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::NoDrop,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Hollow Key").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::HollowKey,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::HollowKey,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Champion Merit").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::ChampionMerit,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::ChampionMerit,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Supreme Merit").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::SupremeMerit,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::SupremeMerit,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Legendary Merit").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::LegendaryMerit,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::LegendaryMerit,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::NoDrop && x.raid == Raid::Akasha
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("No Drop").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::NoDrop && x.raid == Raid::Akasha
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::Akasha,
+                                                Item::NoDrop,
+                                                ChestType::None,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::Akasha,
+                                                    Item::NoDrop,
+                                                    ChestType::None,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::NoDrop && x.raid == Raid::Akasha
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::HollowKey && x.raid == Raid::Akasha
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Hollow Key").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::HollowKey
+                                                        && x.raid == Raid::Akasha
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::Akasha,
+                                                Item::HollowKey,
+                                                ChestType::Blue,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::Akasha,
+                                                    Item::HollowKey,
+                                                    ChestType::Blue,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::HollowKey && x.raid == Raid::Akasha
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::SilverCentrum && x.raid == Raid::Akasha
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Silver Centrum").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::SilverCentrum
+                                                        && x.raid == Raid::Akasha
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::Akasha,
+                                                Item::SilverCentrum,
+                                                ChestType::Blue,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::Akasha,
+                                                    Item::SilverCentrum,
+                                                    ChestType::Blue,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::SilverCentrum && x.raid == Raid::Akasha
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::GoldBrick && x.raid == Raid::Akasha
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Gold Brick").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::GoldBrick
+                                                        && x.raid == Raid::Akasha
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::Akasha,
+                                                Item::GoldBrick,
+                                                ChestType::Blue,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::Akasha,
+                                                    Item::GoldBrick,
+                                                    ChestType::Blue,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::GoldBrick && x.raid == Raid::Akasha
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
                                 ui.end_row();
-                                if ui.button("Silver Centrum").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::SilverCentrum,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::SilverCentrum,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Weapon Plus Mark +1").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::WeaponPlusMark1,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::WeaponPlusMark1,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Weapon Plus Mark +2").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::WeaponPlusMark2,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::WeaponPlusMark2,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Weapon Plus Mark +3").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::WeaponPlusMark3,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::WeaponPlusMark3,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::CoronationRing && x.raid == Raid::Akasha
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Coronation Ring").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::CoronationRing
+                                                        && x.raid == Raid::Akasha
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::Akasha,
+                                                Item::CoronationRing,
+                                                ChestType::Blue,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::Akasha,
+                                                    Item::CoronationRing,
+                                                    ChestType::Blue,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::CoronationRing && x.raid == Raid::Akasha
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::ChampionMerit && x.raid == Raid::Akasha
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Champion Merit").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::ChampionMerit
+                                                        && x.raid == Raid::Akasha
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::Akasha,
+                                                Item::ChampionMerit,
+                                                ChestType::Blue,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::Akasha,
+                                                    Item::ChampionMerit,
+                                                    ChestType::Blue,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::ChampionMerit && x.raid == Raid::Akasha
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::WeaponPlusMark1
+                                                && x.raid == Raid::Akasha
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Weapon Plus Mark +1").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::WeaponPlusMark1
+                                                        && x.raid == Raid::Akasha
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::Akasha,
+                                                Item::WeaponPlusMark1,
+                                                ChestType::Blue,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::Akasha,
+                                                    Item::WeaponPlusMark1,
+                                                    ChestType::Blue,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::WeaponPlusMark1
+                                                && x.raid == Raid::Akasha
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
                                 ui.end_row();
-                                if ui.button("Coronation Ring").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::CoronationRing,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::CoronationRing,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Lineage Ring").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::LineageRing,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::LineageRing,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Intricacy Ring").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::IntricacyRing,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::IntricacyRing,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Gold Brick").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::GoldBrick,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::Akasha,
-                                        Item::GoldBrick,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::LineageRing && x.raid == Raid::Akasha
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Lineage Ring").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::LineageRing
+                                                        && x.raid == Raid::Akasha
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::Akasha,
+                                                Item::LineageRing,
+                                                ChestType::Blue,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::Akasha,
+                                                    Item::LineageRing,
+                                                    ChestType::Blue,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::LineageRing && x.raid == Raid::Akasha
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::SupremeMerit && x.raid == Raid::Akasha
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Supreme Merit").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::SupremeMerit
+                                                        && x.raid == Raid::Akasha
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::Akasha,
+                                                Item::SupremeMerit,
+                                                ChestType::Blue,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::Akasha,
+                                                    Item::SupremeMerit,
+                                                    ChestType::Blue,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::SupremeMerit && x.raid == Raid::Akasha
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::WeaponPlusMark2
+                                                && x.raid == Raid::Akasha
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Weapon Plus Mark +2").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::WeaponPlusMark2
+                                                        && x.raid == Raid::Akasha
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::Akasha,
+                                                Item::WeaponPlusMark2,
+                                                ChestType::Blue,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::Akasha,
+                                                    Item::WeaponPlusMark2,
+                                                    ChestType::Blue,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::WeaponPlusMark2
+                                                && x.raid == Raid::Akasha
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
                                 ui.end_row();
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::IntricacyRing && x.raid == Raid::Akasha
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Intricacy Ring").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::IntricacyRing
+                                                        && x.raid == Raid::Akasha
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::Akasha,
+                                                Item::IntricacyRing,
+                                                ChestType::Blue,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::Akasha,
+                                                    Item::IntricacyRing,
+                                                    ChestType::Blue,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::IntricacyRing && x.raid == Raid::Akasha
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::LegendaryMerit && x.raid == Raid::Akasha
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Legendary Merit").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::LegendaryMerit
+                                                        && x.raid == Raid::Akasha
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::Akasha,
+                                                Item::LegendaryMerit,
+                                                ChestType::Blue,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::Akasha,
+                                                    Item::LegendaryMerit,
+                                                    ChestType::Blue,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::LegendaryMerit && x.raid == Raid::Akasha
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::WeaponPlusMark3
+                                                && x.raid == Raid::Akasha
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Weapon Plus Mark +3").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::WeaponPlusMark3
+                                                        && x.raid == Raid::Akasha
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::Akasha,
+                                                Item::WeaponPlusMark3,
+                                                ChestType::Blue,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::Akasha,
+                                                    Item::WeaponPlusMark3,
+                                                    ChestType::Blue,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::WeaponPlusMark3
+                                                && x.raid == Raid::Akasha
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
                             });
                     }
                     if self.config.app_settings.current_ui_tab == UiTab::PBHL {
                         egui::Grid::new("pbhl_item_grid")
                             .spacing((15., 20.))
                             .show(ui, |ui| {
-                                if ui.button("No Drop").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::PBHL,
-                                        Item::NoDrop,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::PBHL,
-                                        Item::NoDrop,
-                                        Option::Some(format!("{}", self.pbhl_honors)),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Coronation Ring").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::PBHL,
-                                        Item::CoronationRing,
-                                        Option::Some(format!("{}", self.pbhl_honors)),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::PBHL,
-                                        Item::CoronationRing,
-                                        Option::Some(format!("{}", self.pbhl_honors)),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Lineage Ring").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::PBHL,
-                                        Item::LineageRing,
-                                        Option::Some(format!("{}", self.pbhl_honors)),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::PBHL,
-                                        Item::LineageRing,
-                                        Option::Some(format!("{}", self.pbhl_honors)),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Intricacy Ring").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::PBHL,
-                                        Item::IntricacyRing,
-                                        Option::Some(format!("{}", self.pbhl_honors)),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::PBHL,
-                                        Item::IntricacyRing,
-                                        Option::Some(format!("{}", self.pbhl_honors)),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Gold Brick").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::PBHL,
-                                        Item::GoldBrick,
-                                        Option::Some(format!("{}", self.pbhl_honors)),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::PBHL,
-                                        Item::GoldBrick,
-                                        Option::Some(format!("{}", self.pbhl_honors)),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::NoDrop && x.raid == Raid::PBHL
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("No Drop").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::NoDrop && x.raid == Raid::PBHL
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::PBHL,
+                                                Item::NoDrop,
+                                                ChestType::None,
+                                                Option::Some(format!("{}", self.pbhl_honors)),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::PBHL,
+                                                    Item::NoDrop,
+                                                    ChestType::None,
+                                                    Option::Some(format!("{}", self.pbhl_honors)),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| x.item == Item::NoDrop && x.raid == Raid::PBHL)
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::GoldBrick && x.raid == Raid::PBHL
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Gold Brick").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::GoldBrick
+                                                        && x.raid == Raid::PBHL
+                                                        && x.chest == ChestType::Blue
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::PBHL,
+                                                Item::GoldBrick,
+                                                ChestType::Blue,
+                                                Option::Some(format!("{}", self.pbhl_honors)),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::PBHL,
+                                                    Item::GoldBrick,
+                                                    ChestType::Blue,
+                                                    Option::Some(format!("{}", self.pbhl_honors)),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::GoldBrick && x.raid == Raid::PBHL && x.chest == ChestType::Blue
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.end_row();
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::CoronationRing && x.raid == Raid::PBHL
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Coronation Ring").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::CoronationRing
+                                                        && x.raid == Raid::PBHL
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::PBHL,
+                                                Item::CoronationRing,
+                                                ChestType::Blue,
+                                                Option::Some(format!("{}", self.pbhl_honors)),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::PBHL,
+                                                    Item::CoronationRing,
+                                                    ChestType::Blue,
+                                                    Option::Some(format!("{}", self.pbhl_honors)),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::CoronationRing && x.raid == Raid::PBHL
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::LineageRing && x.raid == Raid::PBHL
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Lineage Ring").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::LineageRing
+                                                        && x.raid == Raid::PBHL
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::PBHL,
+                                                Item::LineageRing,
+                                                ChestType::Blue,
+                                                Option::Some(format!("{}", self.pbhl_honors)),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::PBHL,
+                                                    Item::LineageRing,
+                                                    ChestType::Blue,
+                                                    Option::Some(format!("{}", self.pbhl_honors)),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::LineageRing && x.raid == Raid::PBHL
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::IntricacyRing && x.raid == Raid::PBHL
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Intricacy Ring").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::IntricacyRing
+                                                        && x.raid == Raid::PBHL
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::PBHL,
+                                                Item::IntricacyRing,
+                                                ChestType::Blue,
+                                                Option::Some(format!("{}", self.pbhl_honors)),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::PBHL,
+                                                    Item::IntricacyRing,
+                                                    ChestType::Blue,
+                                                    Option::Some(format!("{}", self.pbhl_honors)),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::IntricacyRing && x.raid == Raid::PBHL
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
                                 ui.end_row();
                             });
 
@@ -2250,318 +3221,1106 @@ impl epi::App for AppDorothy {
                         egui::Grid::new("gohl_item_grid")
                             .spacing((15., 20.))
                             .show(ui, |ui| {
-                                if ui.button("No Drop").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::GOHL,
-                                        Item::NoDrop,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::GOHL,
-                                        Item::NoDrop,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Verdant Azurite").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::GOHL,
-                                        Item::VerdantAzurite,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::GOHL,
-                                        Item::VerdantAzurite,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Champion Merit").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::GOHL,
-                                        Item::ChampionMerit,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::GOHL,
-                                        Item::ChampionMerit,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Supreme Merit").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::GOHL,
-                                        Item::SupremeMerit,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::GOHL,
-                                        Item::SupremeMerit,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Legendary Merit").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::GOHL,
-                                        Item::LegendaryMerit,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::GOHL,
-                                        Item::LegendaryMerit,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::NoDrop && x.raid == Raid::GOHL
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("No Drop").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::NoDrop && x.raid == Raid::GOHL
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::GOHL,
+                                                Item::NoDrop,
+                                                ChestType::None,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::GOHL,
+                                                    Item::NoDrop,
+                                                    ChestType::None,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| x.item == Item::NoDrop && x.raid == Raid::GOHL)
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::VerdantAzurite && x.raid == Raid::GOHL
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Verdant Azurite").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::VerdantAzurite
+                                                        && x.raid == Raid::GOHL
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::GOHL,
+                                                Item::VerdantAzurite,
+                                                ChestType::Blue,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::GOHL,
+                                                    Item::VerdantAzurite,
+                                                    ChestType::Blue,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::VerdantAzurite && x.raid == Raid::GOHL
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::SilverCentrum && x.raid == Raid::GOHL
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Silver Centrum").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::SilverCentrum
+                                                        && x.raid == Raid::GOHL
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::GOHL,
+                                                Item::SilverCentrum,
+                                                ChestType::Blue,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::GOHL,
+                                                    Item::SilverCentrum,
+                                                    ChestType::Blue,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::SilverCentrum && x.raid == Raid::GOHL
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::GoldBrick && x.raid == Raid::GOHL
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Gold Brick").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::GoldBrick
+                                                        && x.raid == Raid::GOHL
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::GOHL,
+                                                Item::GoldBrick,
+                                                ChestType::Blue,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::GOHL,
+                                                    Item::GoldBrick,
+                                                    ChestType::Blue,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::GoldBrick && x.raid == Raid::GOHL
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
                                 ui.end_row();
-                                if ui.button("Silver Centrum").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::GOHL,
-                                        Item::SilverCentrum,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::GOHL,
-                                        Item::SilverCentrum,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Coronation Ring").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::GOHL,
-                                        Item::CoronationRing,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::GOHL,
-                                        Item::CoronationRing,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Lineage Ring").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::GOHL,
-                                        Item::LineageRing,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::GOHL,
-                                        Item::LineageRing,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Intricacy Ring").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::GOHL,
-                                        Item::IntricacyRing,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::GOHL,
-                                        Item::IntricacyRing,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
-                                if ui.button("Gold Brick").clicked() {
-                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::GOHL,
-                                        Item::GoldBrick,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = local_settings_copy.droplog.drop.push(ItemDrop::new(
-                                        local_settings_copy
-                                            .droplog
-                                            .drop
-                                            .clone()
-                                            .iter()
-                                            .count()
-                                            .try_into()
-                                            .unwrap(),
-                                        get_time(),
-                                        Raid::GOHL,
-                                        Item::GoldBrick,
-                                        Option::Some("None".to_string()),
-                                    ));
-                                    let _ = confy::store("dorothy-egui", &local_settings_copy);
-                                }
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::CoronationRing && x.raid == Raid::GOHL
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Coronation Ring").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::CoronationRing
+                                                        && x.raid == Raid::GOHL
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::GOHL,
+                                                Item::CoronationRing,
+                                                ChestType::Blue,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::GOHL,
+                                                    Item::CoronationRing,
+                                                    ChestType::Blue,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::CoronationRing && x.raid == Raid::GOHL
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::ChampionMerit && x.raid == Raid::GOHL
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Champion Merit").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::ChampionMerit
+                                                        && x.raid == Raid::GOHL
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::GOHL,
+                                                Item::ChampionMerit,
+                                                ChestType::Blue,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::GOHL,
+                                                    Item::ChampionMerit,
+                                                    ChestType::Blue,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::ChampionMerit && x.raid == Raid::GOHL
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
                                 ui.end_row();
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::LineageRing && x.raid == Raid::GOHL
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Lineage Ring").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::LineageRing
+                                                        && x.raid == Raid::GOHL
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::GOHL,
+                                                Item::LineageRing,
+                                                ChestType::Blue,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::GOHL,
+                                                    Item::LineageRing,
+                                                    ChestType::Blue,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::LineageRing && x.raid == Raid::GOHL
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::SupremeMerit && x.raid == Raid::GOHL
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Supreme Merit").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::SupremeMerit
+                                                        && x.raid == Raid::GOHL
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::GOHL,
+                                                Item::SupremeMerit,
+                                                ChestType::Blue,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::GOHL,
+                                                    Item::SupremeMerit,
+                                                    ChestType::Blue,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::SupremeMerit && x.raid == Raid::GOHL
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.end_row();
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::IntricacyRing && x.raid == Raid::GOHL
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Intricacy Ring").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::IntricacyRing
+                                                        && x.raid == Raid::GOHL
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::GOHL,
+                                                Item::IntricacyRing,
+                                                ChestType::Blue,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::GOHL,
+                                                    Item::IntricacyRing,
+                                                    ChestType::Blue,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::IntricacyRing && x.raid == Raid::GOHL
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::LegendaryMerit && x.raid == Raid::GOHL
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Legendary Merit").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::LegendaryMerit
+                                                        && x.raid == Raid::GOHL
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::GOHL,
+                                                Item::LegendaryMerit,
+                                                ChestType::Blue,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::GOHL,
+                                                    Item::LegendaryMerit,
+                                                    ChestType::Blue,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::LegendaryMerit && x.raid == Raid::GOHL
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                            });
+                    }
+                    if self.config.app_settings.current_ui_tab == UiTab::Hosts {
+                        egui::Grid::new("hosts_item_grid")
+                            .spacing((15., 20.))
+                            .show(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::GoldBrick && x.raid == Raid::UBHL && x.chest == ChestType::Host
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("UBHL Host").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::GoldBrick
+                                                        && x.raid == Raid::UBHL
+                                                        && x.chest == ChestType::Host
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::UBHL,
+                                                Item::GoldBrick,
+                                                ChestType::Host,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::UBHL,
+                                                    Item::GoldBrick,
+                                                    ChestType::Host,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::GoldBrick && x.raid == Raid::UBHL && x.chest == ChestType::Host
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::GoldBrick && x.raid == Raid::UBHL && x.chest == ChestType::Flip
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("UBHL Flip").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::GoldBrick
+                                                        && x.raid == Raid::UBHL
+                                                        && x.chest == ChestType::Flip
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::UBHL,
+                                                Item::GoldBrick,
+                                                ChestType::Flip,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::UBHL,
+                                                    Item::GoldBrick,
+                                                    ChestType::Flip,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::GoldBrick && x.raid == Raid::UBHL && x.chest == ChestType::Flip
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::GoldBrick && x.raid == Raid::PBHL && x.chest == ChestType::Host
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("PBHL Host").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::GoldBrick
+                                                        && x.raid == Raid::PBHL && x.chest == ChestType::Host
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::PBHL,
+                                                Item::GoldBrick,
+                                                ChestType::Host,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::PBHL,
+                                                    Item::GoldBrick,
+                                                    ChestType::Host,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::GoldBrick && x.raid == Raid::PBHL && x.chest == ChestType::Host
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 3.;
+                                    let local_last_added_drop = &local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .rposition(|x| {
+                                            x.item == Item::GoldBrick && x.raid == Raid::Xeno
+                                        })
+                                        .unwrap_or_default();
+                                    if ui.button("Xeno").clicked() {
+                                        let shift = ui.input().modifiers.shift_only();
+                                        if shift {
+                                            if &local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .iter()
+                                                .filter(|&x| {
+                                                    x.item == Item::GoldBrick
+                                                        && x.raid == Raid::Xeno
+                                                })
+                                                .count()
+                                                > &0
+                                            {
+                                                let _ = local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .remove(*local_last_added_drop);
+                                            }
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        } else if !shift {
+                                            let _ = &self.droplog.drop.push(ItemDrop::new(
+                                                local_settings_copy
+                                                    .droplog
+                                                    .drop
+                                                    .clone()
+                                                    .iter()
+                                                    .count()
+                                                    .try_into()
+                                                    .unwrap(),
+                                                get_time(),
+                                                Raid::Xeno,
+                                                Item::GoldBrick,
+                                                ChestType::Flip,
+                                                Option::Some("None".to_string()),
+                                            ));
+                                            let _ = local_settings_copy.droplog.drop.push(
+                                                ItemDrop::new(
+                                                    local_settings_copy
+                                                        .droplog
+                                                        .drop
+                                                        .clone()
+                                                        .iter()
+                                                        .count()
+                                                        .try_into()
+                                                        .unwrap(),
+                                                    get_time(),
+                                                    Raid::Xeno,
+                                                    Item::GoldBrick,
+                                                    ChestType::Flip,
+                                                    Option::Some("None".to_string()),
+                                                ),
+                                            );
+                                            let _ =
+                                                confy::store("dorothy-egui", &local_settings_copy);
+                                        }
+                                    }
+                                    let drop_count = local_settings_copy
+                                        .droplog
+                                        .drop
+                                        .iter()
+                                        .filter(|x| {
+                                            x.item == Item::GoldBrick && x.raid == Raid::Xeno
+                                        })
+                                        .count();
+                                    ui.label("x".to_string() + &drop_count.to_string());
+                                });
                             });
                     }
                 });

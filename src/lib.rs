@@ -11,9 +11,18 @@ use std::{f32::INFINITY, fmt};
 
 use chrono::{DateTime, Local};
 use csv;
+use eframe::egui::{self, Context};
+use eframe::epaint::{ColorImage, TextureHandle};
 use serde::{Deserialize, Serialize};
 
 pub mod app;
+
+pub static BLUE_CHEST: &[u8] = include_bytes!("./images/blue_chest.png");
+pub static NO_BLUE_CHEST: &[u8] = include_bytes!("./images/no_blue_chest.png");
+pub static C_RING: &[u8] = include_bytes!("./images/coronation_ring.png");
+pub static L_RING: &[u8] = include_bytes!("./images/lineage_ring.png");
+pub static I_RING: &[u8] = include_bytes!("./images/intricacy_ring.png");
+pub static GOLD_BAR: &[u8] = include_bytes!("./images/hihi.png");
 
 pub fn get_time() -> String {
     let logged_time: DateTime<Local> = Local::now();
@@ -34,6 +43,28 @@ pub fn calculate_pulls(crystals: f32, tenners: f32, singles: f32) -> String {
 pub fn get_percentage(x: f32, y: f32) -> String {
     let result = (x * 100.0) / y;
     return format!("{:.2}%", result);
+}
+
+pub fn load_image_from_path(path: &std::path::Path) -> Result<egui::ColorImage, image::ImageError> {
+    let image = image::io::Reader::open(path)?.decode()?;
+    let size = [image.width() as _, image.height() as _];
+    let image_buffer = image.to_rgba8();
+    let pixels = image_buffer.as_flat_samples();
+    Ok(egui::ColorImage::from_rgba_unmultiplied(
+        size,
+        pixels.as_slice(),
+    ))
+}
+
+pub fn load_image_from_memory(image_data: &[u8]) -> Result<ColorImage, image::ImageError> {
+    let image = image::load_from_memory(image_data)?;
+    let size = [image.width() as _, image.height() as _];
+    let image_buffer = image.to_rgba8();
+    let pixels: image::FlatSamples<&[u8]> = image_buffer.as_flat_samples();
+    Ok(ColorImage::from_rgba_unmultiplied(
+        size,
+        pixels.as_slice(),
+    ))
 }
 
 #[cfg(target_family = "windows")]
@@ -98,13 +129,13 @@ impl fmt::Display for PBHLHonors {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             PBHLHonors::Ignore => write!(f, ""),
-            PBHLHonors::Honors800k => write!(f, "0~800k"),
-            PBHLHonors::Honors1000k => write!(f, "801~1000k"),
-            PBHLHonors::Honors1200k => write!(f, "1001~1200k"),
-            PBHLHonors::Honors1400k => write!(f, "1201~1400k"),
-            PBHLHonors::Honors1600k => write!(f, "1401~1600k"),
-            PBHLHonors::Honors1800k => write!(f, "1601~1800k"),
-            PBHLHonors::Honors2000k => write!(f, "1801~2000k or more"),
+            PBHLHonors::Honors800k => write!(f, "with around 0~800k honors"),
+            PBHLHonors::Honors1000k => write!(f, "with around 801~1000k honors"),
+            PBHLHonors::Honors1200k => write!(f, "with around 1001~1200k honors"),
+            PBHLHonors::Honors1400k => write!(f, "with around 1201~1400k honors"),
+            PBHLHonors::Honors1600k => write!(f, "with around 1401~1600k honors"),
+            PBHLHonors::Honors1800k => write!(f, "with around 1601~1800k honors"),
+            PBHLHonors::Honors2000k => write!(f, "with around 1801~2000k or more honors"),
         }
     }
 }
@@ -139,6 +170,28 @@ impl fmt::Display for Raid {
             Raid::UBHL => write!(f, "UBHL"),
             Raid::Xeno => write!(f, "Xeno Showdown"),
             Raid::None => write!(f, ""),
+        }
+    }
+}
+
+#[derive(PartialEq, Clone, Default, Debug, Serialize, Deserialize)]
+pub enum ChestType {
+    Host,
+    Mvp,
+    Flip,
+    None,
+    #[default]
+    Blue,
+}
+
+impl fmt::Display for ChestType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            ChestType::Host => write!(f, "Host Chest"),
+            ChestType::Mvp => write!(f, "MVP Chest"),
+            ChestType::Flip => write!(f, "Flip Chest"),
+            ChestType::None => write!(f, ""),
+            ChestType::Blue => write!(f, "Blue Chest"),
         }
     }
 }
@@ -207,6 +260,7 @@ pub struct ItemDrop {
     date_obtained: String,
     raid: Raid,
     item: Item,
+    chest: ChestType,
     #[serde(default)]
     honors: Option<String>,
 }
@@ -218,6 +272,7 @@ impl ItemDrop {
         date_obtained: String,
         raid: Raid,
         item: Item,
+        chest: ChestType,
         honors: Option<String>,
     ) -> Self {
         Self {
@@ -225,6 +280,7 @@ impl ItemDrop {
             date_obtained,
             raid,
             item,
+            chest,
             honors,
         }
     }
@@ -286,14 +342,38 @@ impl DorothyConfig {
     }
 }
 
+#[derive(PartialEq, Default, Clone)]
+pub struct ItemImage {
+    texture: Option<egui::TextureHandle>,
+}
+
+impl ItemImage {
+   pub fn ui(&mut self, image_name: &str, image: &[u8], ui: &mut egui::Ui) {
+        let image = load_image_from_memory(image).unwrap();
+        let texture: &egui::TextureHandle = self.texture.get_or_insert_with(|| {
+            ui.ctx().load_texture(image_name, image)
+        });
+        ui.image(texture, texture.size_vec2());
+    }
+
+   pub fn texture(&mut self, image_name: &str, image: &[u8], ui: &mut egui::Ui) -> &TextureHandle {
+        let image = load_image_from_memory(image).unwrap();
+        let texture: &egui::TextureHandle = self.texture.get_or_insert_with(|| {
+            ui.ctx().load_texture(image_name, image)
+        });
+        texture
+    }
+
+}
+
+#[cfg(target_arch = "wasm32")]
+use crate::{app::AppDorothy, AppSettings};
 #[cfg(target_arch = "wasm32")]
 use eframe::wasm_bindgen::{self, prelude::*};
-use crate::{app::AppDorothy, AppSettings};
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 pub fn start(canvas_id: &str) -> Result<(), eframe::wasm_bindgen::JsValue> {
-
     console_error_panic_hook::set_once();
     tracing_wasm::set_as_global_default();
 
