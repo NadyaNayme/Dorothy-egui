@@ -1,7 +1,7 @@
 [package]
 name = "dorothy"
 default-run = "dorothy-egui_bin"
-version = "0.0.8"
+version = "0.0.9"
 authors = ["Nadya Nayme <admin@aishitei.ru>"]
 edition = "2021"
 rust-version = "1.56"
