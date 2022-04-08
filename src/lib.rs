@@ -88,6 +88,113 @@ pub fn load_icon(icon_bytes: &Vec<u8>) -> Option<epi::IconData> {
     }
 }
 
+pub fn place_total_header(raid: Raid, item: Item, chest: ChestType, settings: &AppSettings, ui: &mut Ui) {
+    let mut total_drops_of_item = settings
+        .droplog
+        .drop
+        .iter()
+        .filter(|x| x.raid == raid && x.chest != ChestType::Host && x.chest != ChestType::Flip)
+        .count();
+    if raid == Raid::UBHL || raid == Raid::Xeno {
+        total_drops_of_item = settings
+                .droplog
+                .drop
+                .iter()
+                .filter(|x| x.raid == Raid::UBHL || x.raid == Raid::Xeno || (x.raid == Raid::PBHL && x.chest == ChestType::Host))
+                .count();
+    }
+    let raid_heading: String = match raid {
+        Raid::Akasha => "Akasha - ".to_string(),
+        Raid::PBHL => "PBHL - ".to_string(),
+        Raid::GOHL => "GOHL - ".to_string(),
+        Raid::UBHL => "Hosts - ".to_string(),
+        Raid::Xeno => "Hosts - ".to_string(),
+        _ => "".to_string(),
+    };
+    ui.add_space(20.);
+    ui.heading(raid_heading.to_owned() + &total_drops_of_item.to_string(),);
+    ui.add_space(5.);
+}
+
+pub fn place_percentage_label(raid: Raid, item: Item, chest: ChestType, settings: &AppSettings, ui: &mut Ui) {
+    let mut total_drops_of_item = settings
+        .droplog
+        .drop
+        .iter()
+        .filter(|x| x.raid == raid && x.chest != ChestType::Host && x.chest != ChestType::Flip)
+        .count();
+    if raid == Raid::UBHL || raid == Raid::Xeno || (raid == Raid::PBHL && chest == ChestType::Host) {
+        total_drops_of_item = settings
+                .droplog
+                .drop
+                .iter()
+                .filter(|x| x.raid == Raid::UBHL || x.raid == Raid::Xeno || x.raid == Raid::PBHL && x.chest != ChestType::Blue && x.chest != ChestType::None)
+                .count();
+    }
+    let no_drop_count = settings
+        .droplog
+        .drop
+        .iter()
+        .filter(|x| x.item == Item::NoDrop && x.raid == raid)
+        .count();
+        let label_text: String = match item {
+            Item::NoDrop => "No Drop: ".to_string(),
+            Item::HollowKey => "Hollow Key: ".to_string(),
+            Item::VerdantAzurite => "Verdant Azurite: ".to_string(),
+            Item::SilverCentrum => "Silver Centrum: ".to_string(),
+            Item::GoldBrick => "Gold Brick: ".to_string(),
+            Item::ChampionMerit => "Champion Merit: ".to_string(),
+            Item::SupremeMerit => "Supreme Merit: ".to_string(),
+            Item::LegendaryMerit => "Legendary Merit: ".to_string(),
+            Item::CoronationRing => "Coronation Ring: ".to_string(),
+            Item::LineageRing => "Lineage Ring: ".to_string(),
+            Item::IntricacyRing => "Intricacy Ring: ".to_string(),
+            Item::WeaponPlusMark1 => "Weapon Plus Mark 1: ".to_string(),
+            Item::WeaponPlusMark2 => "Weapon Plus Mark 2: ".to_string(),
+            Item::WeaponPlusMark3 => "Weapon Plus Mark 3: ".to_string(),
+            _ => "".to_string(),
+        };
+        let items_dropped = settings
+            .droplog
+            .drop
+            .iter()
+            .filter(|x| {
+                x.item == item && x.raid == raid && x.chest == chest
+            })
+            .count();
+
+        if settings.app_settings.droprate_by_kills {
+            let drop_percent_rate = format!(
+                " ({:.1$}%)",
+                ((items_dropped as f32 / total_drops_of_item as f32)
+                    * 100.)
+                    .to_string(),
+                3
+            );
+            ui.label(
+                label_text
+                    + &items_dropped.to_string()
+                    + &drop_percent_rate.to_string()
+            );
+        } else if !settings.app_settings.droprate_by_kills && chest != ChestType::None {
+            let drop_percent_rate = format!(
+                " ({:.1$}%)",
+                ((items_dropped as f32
+                    / (total_drops_of_item as f32 - no_drop_count as f32))
+                    * 100.)
+                    .to_string(),
+                3
+            );
+            ui.label(
+                label_text
+                    + &items_dropped.to_string()
+                    + &drop_percent_rate.to_string()
+            );
+        } else {
+            ui.label("No Drop: ".to_string() + &no_drop_count.to_string());
+        }
+}
+
 #[cfg(target_family = "windows")]
 pub fn create_path(path: &str) -> std::io::Result<()> {
     fs::create_dir(path)?;
