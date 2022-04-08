@@ -11,7 +11,7 @@ use std::{f32::INFINITY, fmt};
 
 use chrono::{DateTime, Local};
 use csv;
-use eframe::egui::{self, Context};
+use eframe::egui::{self};
 use eframe::epaint::{ColorImage, TextureHandle};
 use serde::{Deserialize, Serialize};
 
@@ -65,6 +65,20 @@ pub fn load_image_from_memory(image_data: &[u8]) -> Result<ColorImage, image::Im
         size,
         pixels.as_slice(),
     ))
+}
+
+pub fn load_icon(icon_bytes: &Vec<u8>) -> Option<epi::IconData> {
+    if let Ok(image) = image::load_from_memory(icon_bytes) {
+        let image = image.to_rgba8();
+        let (width, height) = image.dimensions();
+        Some(epi::IconData {
+            width,
+            height,
+            rgba: image.as_raw().to_vec(),
+        })
+    } else {
+        None
+    }
 }
 
 #[cfg(target_family = "windows")]

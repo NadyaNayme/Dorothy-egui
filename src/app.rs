@@ -1,13 +1,10 @@
 use crate::*;
-use confy;
 use eframe::{
     egui::{self, RichText, Visuals},
-    epaint::{Color32, Vec2},
+    epaint::{Color32},
     epi,
 };
-use egui_extras::RetainedImage;
 use serde::{Deserialize, Serialize};
-use image::{*, ImageError};
 #[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "persistence", serde(default))]
 #[derive(Default, Serialize, Deserialize)]
@@ -48,6 +45,7 @@ impl epi::App for AppDorothy {
         "Dorothy"
     }
 
+    #[cfg(feature = "persistence")]
     fn setup(
         &mut self,
         _ctx: &egui::Context,
@@ -81,10 +79,10 @@ impl epi::App for AppDorothy {
 
         if self.config.app_settings.dark_mode {
             ctx.set_visuals(Visuals::dark());
-            local_settings_copy.app_settings.dark_mode = true;
+            self.config.app_settings.dark_mode = true;
         } else {
             ctx.set_visuals(Visuals::light());
-            local_settings_copy.app_settings.dark_mode = false;
+            self.config.app_settings.dark_mode = false;
         }
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
