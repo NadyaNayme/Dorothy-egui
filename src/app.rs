@@ -202,7 +202,7 @@ impl epi::App for AppDorothy {
         if self.config.app_settings.left_panel_visible {
             egui::SidePanel::left("left_side_panel")
                 .min_width(180.)
-                .max_width(200.)
+                .max_width(400.)
                 .show(ctx, |ui| {
                     ui.add_space(5.);
                     ui.heading("Drop Totals");
@@ -490,7 +490,7 @@ impl epi::App for AppDorothy {
         if self.config.app_settings.right_panel_visible {
             egui::SidePanel::right("right_side_panel")
                 .min_width(120.)
-                .max_width(180.)
+                .max_width(400.)
                 .show(ctx, |ui| {
                     ui.heading("Recent Drops");
                     ui.add_space(5.);
