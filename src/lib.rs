@@ -3,20 +3,20 @@
 #![feature(derive_default_enum)]
 #![feature(drain_filter)]
 
-
 use eframe::egui::{widgets, Response, Sense, Ui, Widget, WidgetInfo, WidgetType};
 use eframe::epaint::{ColorImage, Rounding, TextureId, Vec2};
 use serde::{Deserialize, Serialize};
 
-use std::{f32::INFINITY, fmt};
-use csv;
-use std::error::Error;
-use std::fs::{self, OpenOptions};
-use std::path::Path;
-#[cfg(target_arch = "wasm32")]
-use chrono::{NaiveDateTime, DateTime, Utc};
 #[cfg(not(target_arch = "wasm32"))]
 use chrono::{DateTime, Local};
+#[cfg(target_arch = "wasm32")]
+use chrono::{DateTime, NaiveDateTime, Utc};
+use csv;
+use std::error::Error;
+use std::fmt::Display;
+use std::fs::{self, OpenOptions};
+use std::path::Path;
+use std::{f32::INFINITY, fmt};
 
 pub mod app;
 
@@ -35,6 +35,13 @@ pub static P_MARK_1: &[u8] = include_bytes!("./images/weapon_plus_mark_1.png");
 pub static P_MARK_2: &[u8] = include_bytes!("./images/weapon_plus_mark_2.png");
 pub static P_MARK_3: &[u8] = include_bytes!("./images/weapon_plus_mark_3.png");
 pub static GOLD_BAR: &[u8] = include_bytes!("./images/hihi.png");
+pub static UBHL_HOST_BAR: &[u8] = include_bytes!("./images/ubhl_host.png");
+pub static UBHL_FLIP_BAR: &[u8] = include_bytes!("./images/ubhl_flip.png");
+pub static PBHL_HOST_BAR: &[u8] = include_bytes!("./images/pbhl_host.png");
+pub static XENO_FLIP_BAR: &[u8] = include_bytes!("./images/xeno_flip.png");
+pub static HL_HOST_BAR: &[u8] = include_bytes!("./images/hl_host.png");
+pub static QL_HOST_BAR: &[u8] = include_bytes!("./images/ql_host.png");
+pub static HLQL_HOST_BAR: &[u8] = include_bytes!("./images/hlql_host.png");
 pub static DOROTHY: &[u8] = include_bytes!("./images/dorothy.ico");
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -47,7 +54,14 @@ pub fn get_time() -> String {
 pub fn get_time() -> String {
     let now = js_sys::Date::now().to_string();
     let now_as_epoch = now.parse::<i64>().unwrap();
-    let datetime = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp_opt(now_as_epoch / 1000, (now_as_epoch % 1000) as u32 * 1_000_000).unwrap(), Utc);
+    let datetime = DateTime::<Utc>::from_utc(
+        NaiveDateTime::from_timestamp_opt(
+            now_as_epoch / 1000,
+            (now_as_epoch % 1000) as u32 * 1_000_000,
+        )
+        .unwrap(),
+        Utc,
+    );
     datetime.to_string()
 }
 
@@ -134,6 +148,9 @@ pub fn place_total_header(
         Raid::GOHL => "GOHL - ".to_string(),
         Raid::UBHL => "Hosts - ".to_string(),
         Raid::Xeno => "Hosts - ".to_string(),
+        Raid::Huanglong => "Hosts - ".to_string(),
+        Raid::Qilin => "Hosts - ".to_string(),
+        Raid::HLQL => "Hosts - ".to_string(),
         Raid::None => "".to_string(),
     };
     ui.add_space(20.);
@@ -154,18 +171,18 @@ pub fn place_percentage_label(
         .iter()
         .filter(|x| x.raid == raid && x.chest != ChestType::Host && x.chest != ChestType::Flip)
         .count();
-    if raid == Raid::UBHL || raid == Raid::Xeno || (raid == Raid::PBHL && chest == ChestType::Host)
+    if raid != Raid::Akasha && raid != Raid::GOHL
+        || (raid == Raid::PBHL && chest == ChestType::Host)
     {
         total_drops_of_item = settings
             .droplog
             .drop
             .iter()
             .filter(|x| {
-                x.raid == Raid::UBHL
-                    || x.raid == Raid::Xeno
-                    || x.raid == Raid::PBHL
+                x.raid != Raid::Akasha && x.raid != Raid::GOHL
+                    || (x.raid == Raid::PBHL
                         && x.chest != ChestType::Blue
-                        && x.chest != ChestType::None
+                        && x.chest != ChestType::None)
             })
             .count();
     }
@@ -175,7 +192,7 @@ pub fn place_percentage_label(
         .iter()
         .filter(|x| x.item == Item::NoDrop && x.raid == raid)
         .count();
-    let label_text: String = match item {
+    let mut label_text: String = match item {
         Item::NoDrop => "No Drop: ".to_string(),
         Item::HollowKey => "Hollow Key: ".to_string(),
         Item::VerdantAzurite => "Verdant Azurite: ".to_string(),
@@ -187,10 +204,17 @@ pub fn place_percentage_label(
         Item::CoronationRing => "Coronation Ring: ".to_string(),
         Item::LineageRing => "Lineage Ring: ".to_string(),
         Item::IntricacyRing => "Intricacy Ring: ".to_string(),
-        Item::WeaponPlusMark1 => "Plus Mark +1: ".to_string(),
-        Item::WeaponPlusMark2 => "Plus Mark +2: ".to_string(),
-        Item::WeaponPlusMark3 => "Plus Mark +3: ".to_string(),
+        Item::WeaponPlusMark1 => "+1 Weapon Mark: ".to_string(),
+        Item::WeaponPlusMark2 => "+2 Weapon Mark: ".to_string(),
+        Item::WeaponPlusMark3 => "+3 Weapon Mark: ".to_string(),
     };
+    if (raid == Raid::PBHL && chest == ChestType::Host)
+        || (raid == Raid::UBHL && chest == ChestType::Host || chest == ChestType::Flip)
+            && raid != Raid::Akasha
+            && raid != Raid::GOHL
+    {
+        label_text = format!("{} {} {}", raid, chest, ": ".to_string());
+    }
     let items_dropped = settings
         .droplog
         .drop
@@ -199,19 +223,24 @@ pub fn place_percentage_label(
         .count();
 
     if settings.app_settings.droprate_by_kills {
-        let drop_percent_rate = format!(
-            " ({:.1$}%)",
-            ((items_dropped as f32 / total_drops_of_item as f32) * 100.).to_string(),
-            3
+        use format_num::NumberFormat;
+        let mut drop_percent_rate = format!(
+            " ({})",
+            NumberFormat::new().format(".2%", items_dropped as f32 / total_drops_of_item as f32)
         );
+        if items_dropped == 0 {
+            drop_percent_rate = "".to_string();
+        }
         ui.label(label_text + &items_dropped.to_string() + &drop_percent_rate.to_string());
     } else if !settings.app_settings.droprate_by_kills && chest != ChestType::None {
-        let drop_percent_rate = format!(
-            " ({:.1$}%)",
-            ((items_dropped as f32 / (total_drops_of_item as f32 - no_drop_count as f32)) * 100.)
-                .to_string(),
-            3
+        use format_num::NumberFormat;
+        let mut drop_percent_rate = format!(
+            " ({})",
+            NumberFormat::new().format(".2%", items_dropped as f32 / total_drops_of_item as f32)
         );
+        if items_dropped == 0 {
+            drop_percent_rate = "".to_string();
+        }
         ui.label(label_text + &items_dropped.to_string() + &drop_percent_rate.to_string());
     } else {
         ui.label("No Drop: ".to_string() + &no_drop_count.to_string());
@@ -222,6 +251,7 @@ pub fn place_image_button_combo(
     item: Item,
     raid: Raid,
     chest: ChestType,
+    honors: &PBHLHonors,
     settings: &mut AppSettings,
     ui: &mut Ui,
 ) {
@@ -241,7 +271,7 @@ pub fn place_image_button_combo(
         Item::WeaponPlusMark2 => "weapon_plus_mark_2.png",
         Item::WeaponPlusMark3 => "weapon_plus_mark_3.png",
     };
-    let label_text = match item {
+    let mut label_text = match item {
         Item::NoDrop => "No Drop",
         Item::HollowKey => "Hollow Key",
         Item::VerdantAzurite => "Verdant Azurite",
@@ -253,11 +283,28 @@ pub fn place_image_button_combo(
         Item::CoronationRing => "Coronation Ring",
         Item::LineageRing => "Lineage Ring",
         Item::IntricacyRing => "Intricacy Ring",
-        Item::WeaponPlusMark1 => "Plus Mark +1",
-        Item::WeaponPlusMark2 => "Plus Mark +2",
-        Item::WeaponPlusMark3 => "Plus Mark +3",
+        Item::WeaponPlusMark1 => "+1 Weapon Mark",
+        Item::WeaponPlusMark2 => "+2 Weapon Mark",
+        Item::WeaponPlusMark3 => "+3 Weapon Mark",
     };
-    let item_image = match item {
+    if chest == ChestType::Host {
+        label_text = match raid {
+            Raid::UBHL => "UBHL - Host Bar",
+            Raid::PBHL => "PBHL - Host Bar",
+            Raid::Huanglong => "Huanglong Bar",
+            Raid::Qilin => "Qilin Bar",
+            Raid::HLQL => "HLQL Bar",
+            _ => "",
+        };
+    }
+    if chest == ChestType::Flip {
+        label_text = match raid {
+            Raid::UBHL => "UBHL - Flip Bar",
+            Raid::Xeno => "Xeno Bar",
+            _ => "",
+        };
+    }
+    let mut item_image = match item {
         Item::NoDrop => NO_BLUE_CHEST,
         Item::HollowKey => HOLLOW_KEY,
         Item::VerdantAzurite => VERDANT_AZURITE,
@@ -273,12 +320,37 @@ pub fn place_image_button_combo(
         Item::WeaponPlusMark2 => P_MARK_2,
         Item::WeaponPlusMark3 => P_MARK_3,
     };
+    if chest == ChestType::Host {
+        if raid == Raid::Huanglong {
+            item_image = HL_HOST_BAR;
+        }
+        if raid == Raid::Qilin {
+            item_image = QL_HOST_BAR;
+        }
+        if raid == Raid::HLQL {
+            item_image = HLQL_HOST_BAR;
+        }
+        if raid == Raid::UBHL {
+            item_image = UBHL_HOST_BAR;
+        }
+        if raid == Raid::PBHL {
+            item_image = PBHL_HOST_BAR;
+        }
+    }
+    if chest == ChestType::Flip {
+        if raid == Raid::UBHL {
+            item_image = UBHL_FLIP_BAR;
+        }
+        if raid == Raid::Xeno {
+            item_image = XENO_FLIP_BAR;
+        }
+    }
     ui.spacing_mut().item_spacing.x = 3.;
     let local_last_added_drop = &settings
         .droplog
         .drop
         .iter()
-        .rposition(|x| x.item == item && x.raid == raid)
+        .rposition(|x| x.item == item && x.raid == raid && x.chest == chest)
         .unwrap_or_default();
     if settings.app_settings.button_label_combo[1] {
         if ui
@@ -295,7 +367,7 @@ pub fn place_image_button_combo(
                     .droplog
                     .drop
                     .iter()
-                    .filter(|x| x.item == item && x.raid == raid)
+                    .filter(|x| x.item == item && x.raid == raid && x.chest == chest)
                     .count()
                     > &0
                 {
@@ -315,7 +387,7 @@ pub fn place_image_button_combo(
                     raid,
                     item,
                     chest,
-                    Option::Some("None".to_string()),
+                    Some(format!("{}", honors)),
                 ));
             }
         }
@@ -328,7 +400,7 @@ pub fn place_image_button_combo(
                     .droplog
                     .drop
                     .iter()
-                    .filter(|x| x.item == item && x.raid == raid)
+                    .filter(|x| x.item == item && x.raid == raid && x.chest == chest)
                     .count()
                     > &0
                 {
@@ -348,18 +420,20 @@ pub fn place_image_button_combo(
                     raid,
                     item,
                     chest,
-                    Option::Some("None".to_string()),
+                    Some(format!("{}", honors)),
                 ));
             }
         }
     }
-    let drop_count = settings
-        .droplog
-        .drop
-        .iter()
-        .filter(|x| x.item == item && x.raid == raid)
-        .count();
-    ui.label("x".to_string() + &drop_count.to_string());
+    if settings.app_settings.active_items_2[26] {
+        let drop_count = settings
+            .droplog
+            .drop
+            .iter()
+            .filter(|x| x.item == item && x.raid == raid && x.chest == chest)
+            .count();
+        ui.label("x".to_string() + &drop_count.to_string());
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -371,7 +445,7 @@ pub fn create_path(path: &str) -> std::io::Result<()> {
 #[cfg(not(target_arch = "wasm32"))]
 pub fn export(droplog: DropLog) -> Result<(), Box<dyn Error>> {
     let logged_drops = droplog.drop.iter().count().to_string();
-    let export_time: DateTime<Local> =  Local::now();
+    let export_time: DateTime<Local> = Local::now();
     let export_four_digit_year = export_time.format("%Y").to_string();
     let export_month = export_time.format("%m").to_string();
     let export_day = export_time.format("%d").to_string();
@@ -452,6 +526,9 @@ pub enum Raid {
     GOHL,
     UBHL,
     Xeno,
+    Huanglong,
+    Qilin,
+    HLQL,
     #[default]
     None,
 }
@@ -463,7 +540,10 @@ impl fmt::Display for Raid {
             Raid::PBHL => write!(f, "PBHL"),
             Raid::GOHL => write!(f, "GOHL"),
             Raid::UBHL => write!(f, "UBHL"),
-            Raid::Xeno => write!(f, "Xeno Showdown"),
+            Raid::Xeno => write!(f, "Xeno"),
+            Raid::Huanglong => write!(f, "Huanglong"),
+            Raid::Qilin => write!(f, "Qilin"),
+            Raid::HLQL => write!(f, "HLQL"),
             Raid::None => write!(f, ""),
         }
     }
@@ -520,9 +600,9 @@ impl fmt::Display for Item {
             Item::SupremeMerit => write!(f, "Supreme Merit"),
             Item::LegendaryMerit => write!(f, "Legendary Merit"),
             Item::SilverCentrum => write!(f, "Silver Centrum"),
-            Item::WeaponPlusMark1 => write!(f, "Weapon Plus Mark 1"),
-            Item::WeaponPlusMark2 => write!(f, "Weapon Plus Mark 2"),
-            Item::WeaponPlusMark3 => write!(f, "Weapon Plus Mark 3"),
+            Item::WeaponPlusMark1 => write!(f, "+1 Weapon Mark"),
+            Item::WeaponPlusMark2 => write!(f, "+2 Weapon Mark"),
+            Item::WeaponPlusMark3 => write!(f, "+3 Weapon Mark"),
             Item::CoronationRing => write!(f, "Coronation Ring"),
             Item::LineageRing => write!(f, "Lineage Ring"),
             Item::IntricacyRing => write!(f, "Intricacy Ring"),
@@ -585,6 +665,7 @@ pub struct DorothyConfig {
     pub dark_mode: bool,
     pub left_panel_visible: bool,
     pub right_panel_visible: bool,
+    pub move_right_to_bottom: bool,
     pub always_on_top: bool,
     pub reset_on_export: bool,
     pub droprate_by_kills: bool,
@@ -594,6 +675,7 @@ pub struct DorothyConfig {
     pub grid_spacing_x: f32,
     pub grid_spacing_y: f32,
     pub active_items: [bool; 32],
+    pub active_items_2: [bool; 32],
     pub button_label_combo: [bool; 2],
     pub crystals_amount: String,
     pub ten_pulls_amount: String,
@@ -610,6 +692,7 @@ impl Default for DorothyConfig {
             dark_mode: true,
             left_panel_visible: true,
             right_panel_visible: true,
+            move_right_to_bottom: false,
             always_on_top: false,
             reset_on_export: true,
             droprate_by_kills: false,
@@ -619,6 +702,7 @@ impl Default for DorothyConfig {
             grid_spacing_x: 10.,
             grid_spacing_y: 20.,
             active_items: [true; 32],
+            active_items_2: [true; 32],
             button_label_combo: [true; 2],
             current_ui_tab: UiTab::Akasha,
             crystals_amount: "0".to_string(),
@@ -636,6 +720,7 @@ impl DorothyConfig {
             dark_mode: true,
             left_panel_visible: true,
             right_panel_visible: false,
+            move_right_to_bottom: false,
             always_on_top: false,
             reset_on_export: true,
             droprate_by_kills: false,
@@ -645,6 +730,7 @@ impl DorothyConfig {
             grid_spacing_x: 10.,
             grid_spacing_y: 20.,
             active_items: [true; 32],
+            active_items_2: [true; 32],
             button_label_combo: [true; 2],
             current_ui_tab: UiTab::Akasha,
             crystals_amount: "0".to_string(),

@@ -106,7 +106,7 @@ impl epi::App for AppDorothy {
                     if ui
                         .checkbox(
                             &mut self.config.app_settings.right_panel_visible,
-                            "Show Right Panel",
+                            "Show Right/Bottom Panel",
                         )
                         .clicked()
                     {
@@ -115,8 +115,18 @@ impl epi::App for AppDorothy {
                     }
                     if ui
                         .checkbox(
+                            &mut self.config.app_settings.move_right_to_bottom,
+                            "Move Right Panel to Bottom",
+                        )
+                        .clicked()
+                    {
+                        local_settings_copy.app_settings.move_right_to_bottom =
+                            self.config.app_settings.move_right_to_bottom;
+                    }
+                    if ui
+                        .checkbox(
                             &mut self.config.app_settings.toggle_active_items,
-                            "Adjust Grid Features",
+                            "Adjust Center Panel Features",
                         )
                         .clicked()
                     {
@@ -152,6 +162,7 @@ impl epi::App for AppDorothy {
                             self.config.app_settings.always_on_top;
                         frame.set_always_on_top(local_settings_copy.app_settings.always_on_top);
                     }
+                    #[cfg(not(target_arch = "wasm32"))]
                     if ui
                         .checkbox(
                             &mut self.config.app_settings.reset_on_export,
@@ -177,7 +188,7 @@ impl epi::App for AppDorothy {
                 ui.menu_button("Helpful Links", |ui| {
                     ui.style_mut().wrap = Some(false);
                     if ui.button("Latest Dorothy Release (github.com)").clicked() {
-                        let url = "https://github.com/NadyaNayme/Dorothy/releases/latest";
+                        let url = "https://github.com/NadyaNayme/Dorothy-egui/releases/latest";
                         let _ = open::that(&url).unwrap();
                     }
                     if ui.button("GBF Wiki (gbf.wiki)").clicked() {
@@ -482,12 +493,37 @@ impl epi::App for AppDorothy {
                                     &local_settings_copy,
                                     ui,
                                 );
+                                place_percentage_label(
+                                    Raid::Huanglong,
+                                    Item::GoldBrick,
+                                    ChestType::Host,
+                                    &local_settings_copy,
+                                    ui,
+                                );
+                                place_percentage_label(
+                                    Raid::Qilin,
+                                    Item::GoldBrick,
+                                    ChestType::Host,
+                                    &local_settings_copy,
+                                    ui,
+                                );
+                                place_percentage_label(
+                                    Raid::HLQL,
+                                    Item::GoldBrick,
+                                    ChestType::Host,
+                                    &local_settings_copy,
+                                    ui,
+                                );
                             }
                         });
+                    ui.add_space(50.);
+                    egui::warn_if_debug_build(ui);
                 });
         }
 
-        if self.config.app_settings.right_panel_visible {
+        if self.config.app_settings.right_panel_visible
+            && !self.config.app_settings.move_right_to_bottom
+        {
             egui::SidePanel::right("right_side_panel")
                 .min_width(120.)
                 .max_width(400.)
@@ -523,8 +559,11 @@ impl epi::App for AppDorothy {
                                         if ui
                                             .add(
                                                 egui::Label::new(
-                                                    RichText::new(format!("{}", drop.item))
-                                                        .color(gold_brick_text_color),
+                                                    RichText::new(format!(
+                                                        "{} - {}",
+                                                        drop.item, drop.raid
+                                                    ))
+                                                    .color(gold_brick_text_color),
                                                 )
                                                 .sense(egui::Sense::click()),
                                             )
@@ -557,8 +596,11 @@ impl epi::App for AppDorothy {
                                         if ui
                                             .add(
                                                 egui::Label::new(
-                                                    RichText::new(format!("{}", drop.item))
-                                                        .color(gold_brick_text_color),
+                                                    RichText::new(format!(
+                                                        "{} - {}",
+                                                        drop.item, drop.raid
+                                                    ))
+                                                    .color(gold_brick_text_color),
                                                 )
                                                 .sense(egui::Sense::click()),
                                             )
@@ -590,8 +632,11 @@ impl epi::App for AppDorothy {
                                         if ui
                                             .add(
                                                 egui::Label::new(
-                                                    RichText::new(format!("{}", drop.item))
-                                                        .color(gold_brick_text_color),
+                                                    RichText::new(format!(
+                                                        "{} - {}",
+                                                        drop.item, drop.raid
+                                                    ))
+                                                    .color(gold_brick_text_color),
                                                 )
                                                 .sense(egui::Sense::click()),
                                             )
@@ -613,14 +658,193 @@ impl epi::App for AppDorothy {
                                         }
                                         ui.add_space(3.)
                                     } else {
+                                        let mut drop_honors = drop.honors.as_ref().unwrap();
+                                        let empty_string = "".to_string();
+                                        if drop.raid != Raid::PBHL {
+                                            drop_honors = &empty_string;
+                                        }
                                         if ui
                                             .add(
                                                 egui::Label::new(format!("{}", drop.item))
                                                     .sense(egui::Sense::click()),
                                             )
                                             .on_hover_text(format!(
+                                                "On {} from {} {}",
+                                                drop.date_obtained, drop.raid, drop_honors
+                                            ))
+                                            .clicked()
+                                        {
+                                            let _ = self
+                                                .config
+                                                .droplog
+                                                .drop
+                                                .retain(|x| x.drop_id != drop.drop_id);
+                                            let _ = local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .retain(|x| x.drop_id != drop.drop_id);
+                                        }
+                                        ui.add_space(3.)
+                                    }
+                                });
+                            }
+                        });
+                });
+        }
+
+        if self.config.app_settings.right_panel_visible
+            && self.config.app_settings.move_right_to_bottom
+        {
+            egui::TopBottomPanel::bottom("bottom_panel")
+                .min_height(100.)
+                .max_height(800.)
+                .resizable(true)
+                .height_range(std::ops::RangeInclusive::new(100., 800.))
+                .show(ctx, |ui| {
+                    ui.add_space(15.);
+                    ui.heading("Recent Drops");
+                    ui.add_space(5.);
+
+                    egui::ScrollArea::vertical()
+                        .auto_shrink([false, false])
+                        .max_height(INFINITY)
+                        .max_width(INFINITY)
+                        .show(ui, |ui| {
+                            for drop in local_settings_copy
+                                .droplog
+                                .drop
+                                .clone()
+                                .into_iter()
+                                .filter(|x| x.item != Item::NoDrop)
+                                .rev()
+                            {
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 0.0;
+                                    if drop.chest == ChestType::Host
+                                        || drop.chest == ChestType::Flip
+                                            && drop.item == Item::GoldBrick
+                                            && drop.raid != Raid::Xeno
+                                    {
+                                        let mut gold_brick_text_color =
+                                            Color32::from_rgb(255, 221, 26);
+                                        if self.config.app_settings.dark_mode == false {
+                                            gold_brick_text_color = Color32::from_rgb(187, 152, 10);
+                                        }
+                                        if ui
+                                            .add(
+                                                egui::Label::new(
+                                                    RichText::new(format!(
+                                                        "{} - {}",
+                                                        drop.item, drop.raid
+                                                    ))
+                                                    .color(gold_brick_text_color),
+                                                )
+                                                .sense(egui::Sense::click()),
+                                            )
+                                            .on_hover_text(format!(
+                                                "On {} from {} in a {}",
+                                                drop.date_obtained, drop.raid, drop.chest
+                                            ))
+                                            .clicked()
+                                        {
+                                            let _ = self
+                                                .config
+                                                .droplog
+                                                .drop
+                                                .retain(|x| x.drop_id != drop.drop_id);
+                                            let _ = local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .retain(|x| x.drop_id != drop.drop_id);
+                                        }
+                                        ui.add_space(3.)
+                                    } else if drop.item == Item::GoldBrick
+                                        && drop.raid == Raid::PBHL
+                                        && drop.chest == ChestType::Blue
+                                    {
+                                        let mut gold_brick_text_color =
+                                            Color32::from_rgb(255, 221, 26);
+                                        if self.config.app_settings.dark_mode == false {
+                                            gold_brick_text_color = Color32::from_rgb(183, 138, 15);
+                                        }
+                                        if ui
+                                            .add(
+                                                egui::Label::new(
+                                                    RichText::new(format!(
+                                                        "{} - {}",
+                                                        drop.item, drop.raid
+                                                    ))
+                                                    .color(gold_brick_text_color),
+                                                )
+                                                .sense(egui::Sense::click()),
+                                            )
+                                            .on_hover_text(format!(
+                                                "On {} from {} {}",
+                                                drop.date_obtained,
+                                                drop.raid,
+                                                drop.honors.as_ref().unwrap()
+                                            ))
+                                            .clicked()
+                                        {
+                                            let _ = self
+                                                .config
+                                                .droplog
+                                                .drop
+                                                .retain(|x| x.drop_id != drop.drop_id);
+                                            let _ = local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .retain(|x| x.drop_id != drop.drop_id);
+                                        }
+                                        ui.add_space(3.)
+                                    } else if drop.item == Item::GoldBrick {
+                                        let mut gold_brick_text_color =
+                                            Color32::from_rgb(255, 221, 26);
+                                        if self.config.app_settings.dark_mode == false {
+                                            gold_brick_text_color = Color32::from_rgb(187, 152, 10);
+                                        }
+                                        if ui
+                                            .add(
+                                                egui::Label::new(
+                                                    RichText::new(format!(
+                                                        "{} - {}",
+                                                        drop.item, drop.raid
+                                                    ))
+                                                    .color(gold_brick_text_color),
+                                                )
+                                                .sense(egui::Sense::click()),
+                                            )
+                                            .on_hover_text(format!(
                                                 "On {} from {}",
                                                 drop.date_obtained, drop.raid
+                                            ))
+                                            .clicked()
+                                        {
+                                            let _ = self
+                                                .config
+                                                .droplog
+                                                .drop
+                                                .retain(|x| x.drop_id != drop.drop_id);
+                                            let _ = local_settings_copy
+                                                .droplog
+                                                .drop
+                                                .retain(|x| x.drop_id != drop.drop_id);
+                                        }
+                                        ui.add_space(3.)
+                                    } else {
+                                        let mut drop_honors = drop.honors.as_ref().unwrap();
+                                        let empty_string = "".to_string();
+                                        if drop.raid != Raid::PBHL {
+                                            drop_honors = &empty_string;
+                                        }
+                                        if ui
+                                            .add(
+                                                egui::Label::new(format!("{}", drop.item))
+                                                    .sense(egui::Sense::click()),
+                                            )
+                                            .on_hover_text(format!(
+                                                "On {} from {} {}",
+                                                drop.date_obtained, drop.raid, drop_honors
                                             ))
                                             .clicked()
                                         {
@@ -644,56 +868,66 @@ impl epi::App for AppDorothy {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
-                if ui
-                    .selectable_value(
-                        &mut self.config.app_settings.current_ui_tab,
-                        UiTab::Pulls,
-                        "Pull Calculator",
-                    )
-                    .changed()
-                {
-                    frame.set_window_title("Dorothy - Pull Calculator");
-                };
-                if ui
-                    .selectable_value(
-                        &mut self.config.app_settings.current_ui_tab,
-                        UiTab::Akasha,
-                        "Akasha",
-                    )
-                    .changed()
-                {
-                    frame.set_window_title("Dorothy - Akasha");
-                };
-                if ui
-                    .selectable_value(
-                        &mut self.config.app_settings.current_ui_tab,
-                        UiTab::PBHL,
-                        "PBHL",
-                    )
-                    .changed()
-                {
-                    frame.set_window_title("Dorothy - PBHL");
-                };
-                if ui
-                    .selectable_value(
-                        &mut self.config.app_settings.current_ui_tab,
-                        UiTab::GOHL,
-                        "GOHL",
-                    )
-                    .changed()
-                {
-                    frame.set_window_title("Dorothy - GOHL");
-                };
-                if ui
-                    .selectable_value(
-                        &mut self.config.app_settings.current_ui_tab,
-                        UiTab::Hosts,
-                        "Hosts",
-                    )
-                    .changed()
-                {
-                    frame.set_window_title("Dorothy - Hosts");
-                };
+                if self.config.app_settings.active_items_2[20] {
+                    if ui
+                        .selectable_value(
+                            &mut self.config.app_settings.current_ui_tab,
+                            UiTab::Pulls,
+                            "Pull Calculator",
+                        )
+                        .changed()
+                    {
+                        frame.set_window_title("Dorothy - Pull Calculator");
+                    };
+                }
+                if self.config.app_settings.active_items_2[21] {
+                    if ui
+                        .selectable_value(
+                            &mut self.config.app_settings.current_ui_tab,
+                            UiTab::Akasha,
+                            "Akasha",
+                        )
+                        .changed()
+                    {
+                        frame.set_window_title("Dorothy - Akasha");
+                    };
+                }
+                if self.config.app_settings.active_items_2[22] {
+                    if ui
+                        .selectable_value(
+                            &mut self.config.app_settings.current_ui_tab,
+                            UiTab::PBHL,
+                            "PBHL",
+                        )
+                        .changed()
+                    {
+                        frame.set_window_title("Dorothy - PBHL");
+                    };
+                }
+                if self.config.app_settings.active_items_2[23] {
+                    if ui
+                        .selectable_value(
+                            &mut self.config.app_settings.current_ui_tab,
+                            UiTab::GOHL,
+                            "GOHL",
+                        )
+                        .changed()
+                    {
+                        frame.set_window_title("Dorothy - GOHL");
+                    };
+                }
+                if self.config.app_settings.active_items_2[24] {
+                    if ui
+                        .selectable_value(
+                            &mut self.config.app_settings.current_ui_tab,
+                            UiTab::Hosts,
+                            "Hosts",
+                        )
+                        .changed()
+                    {
+                        frame.set_window_title("Dorothy - Hosts");
+                    };
+                }
             });
 
             ui.add_space(30.);
@@ -790,6 +1024,7 @@ impl epi::App for AppDorothy {
                                 self.config.app_settings.grid_spacing_y,
                             ))
                             .show(ui, |ui| {
+                                ui.style_mut().wrap = Some(false);
                                 if !self.config.app_settings.vertical_grid {
                                     if self.config.app_settings.active_items[0] {
                                         ui.horizontal(|ui| {
@@ -797,6 +1032,7 @@ impl epi::App for AppDorothy {
                                                 Item::NoDrop,
                                                 Raid::Akasha,
                                                 ChestType::None,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -808,6 +1044,7 @@ impl epi::App for AppDorothy {
                                                 Item::HollowKey,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -819,6 +1056,7 @@ impl epi::App for AppDorothy {
                                                 Item::SilverCentrum,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -830,6 +1068,7 @@ impl epi::App for AppDorothy {
                                                 Item::GoldBrick,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -848,6 +1087,7 @@ impl epi::App for AppDorothy {
                                                 Item::CoronationRing,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -859,6 +1099,7 @@ impl epi::App for AppDorothy {
                                                 Item::ChampionMerit,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -870,6 +1111,7 @@ impl epi::App for AppDorothy {
                                                 Item::WeaponPlusMark1,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -887,6 +1129,7 @@ impl epi::App for AppDorothy {
                                                 Item::LineageRing,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -898,6 +1141,7 @@ impl epi::App for AppDorothy {
                                                 Item::SupremeMerit,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -909,6 +1153,7 @@ impl epi::App for AppDorothy {
                                                 Item::WeaponPlusMark2,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -926,6 +1171,7 @@ impl epi::App for AppDorothy {
                                                 Item::IntricacyRing,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -937,6 +1183,7 @@ impl epi::App for AppDorothy {
                                                 Item::LegendaryMerit,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -948,6 +1195,7 @@ impl epi::App for AppDorothy {
                                                 Item::WeaponPlusMark3,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -960,6 +1208,7 @@ impl epi::App for AppDorothy {
                                                 Item::NoDrop,
                                                 Raid::Akasha,
                                                 ChestType::None,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -971,6 +1220,7 @@ impl epi::App for AppDorothy {
                                                 Item::HollowKey,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -982,6 +1232,7 @@ impl epi::App for AppDorothy {
                                                 Item::SilverCentrum,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -993,6 +1244,7 @@ impl epi::App for AppDorothy {
                                                 Item::GoldBrick,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -1011,6 +1263,7 @@ impl epi::App for AppDorothy {
                                                 Item::CoronationRing,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -1022,6 +1275,7 @@ impl epi::App for AppDorothy {
                                                 Item::ChampionMerit,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -1033,6 +1287,7 @@ impl epi::App for AppDorothy {
                                                 Item::WeaponPlusMark1,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -1050,6 +1305,7 @@ impl epi::App for AppDorothy {
                                                 Item::LineageRing,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -1061,6 +1317,7 @@ impl epi::App for AppDorothy {
                                                 Item::SupremeMerit,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -1072,6 +1329,7 @@ impl epi::App for AppDorothy {
                                                 Item::WeaponPlusMark2,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -1089,6 +1347,7 @@ impl epi::App for AppDorothy {
                                                 Item::IntricacyRing,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -1100,6 +1359,7 @@ impl epi::App for AppDorothy {
                                                 Item::LegendaryMerit,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -1111,6 +1371,7 @@ impl epi::App for AppDorothy {
                                                 Item::WeaponPlusMark3,
                                                 Raid::Akasha,
                                                 ChestType::Blue,
+                                                &self.pbhl_honors,
                                                 &mut self.config,
                                                 ui,
                                             );
@@ -1126,830 +1387,151 @@ impl epi::App for AppDorothy {
                                 self.config.app_settings.grid_spacing_y,
                             ))
                             .show(ui, |ui| {
-                                if self.config.app_settings.active_items[13] {
-                                    ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 3.;
-                                        let local_last_added_drop = &self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .rposition(|x| {
-                                                x.item == Item::NoDrop && x.raid == Raid::PBHL
-                                            })
-                                            .unwrap_or_default();
-                                        if self.config.app_settings.button_label_combo[1] {
-                                            if ui
-                                                .add(CustomImageButton::new(
-                                                    &ui.ctx().load_texture(
-                                                        "PBHL NO DROP",
-                                                        load_image_from_memory(NO_BLUE_CHEST)
-                                                            .unwrap(),
-                                                    ),
-                                                    (32., 32.),
-                                                ))
-                                                .clicked()
-                                            {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::NoDrop
-                                                                && x.raid == Raid::PBHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::PBHL,
-                                                        Item::NoDrop,
-                                                        ChestType::None,
-                                                        Option::Some(format!(
-                                                            "{}",
-                                                            self.pbhl_honors
-                                                        )),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::PBHL,
-                                                            Item::NoDrop,
-                                                            ChestType::None,
-                                                            Option::Some(format!(
-                                                                "{}",
-                                                                self.pbhl_honors
-                                                            )),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        if self.config.app_settings.button_label_combo[0] {
-                                            if ui.button("No Drop").clicked() {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::NoDrop
-                                                                && x.raid == Raid::PBHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::PBHL,
-                                                        Item::NoDrop,
-                                                        ChestType::None,
-                                                        Option::Some(format!(
-                                                            "{}",
-                                                            self.pbhl_honors
-                                                        )),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::PBHL,
-                                                            Item::NoDrop,
-                                                            ChestType::None,
-                                                            Option::Some(format!(
-                                                                "{}",
-                                                                self.pbhl_honors
-                                                            )),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        let drop_count = self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .filter(|x| {
-                                                x.item == Item::NoDrop && x.raid == Raid::PBHL
-                                            })
-                                            .count();
-                                        ui.label("x".to_string() + &drop_count.to_string());
-                                    });
-                                }
-                                if self.config.app_settings.active_items[14] {
-                                    ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 3.;
-                                        let local_last_added_drop = &self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .rposition(|x| {
-                                                x.item == Item::GoldBrick && x.raid == Raid::PBHL
-                                            })
-                                            .unwrap_or_default();
-                                        if self.config.app_settings.button_label_combo[1] {
-                                            if ui
-                                                .add(CustomImageButton::new(
-                                                    &ui.ctx().load_texture(
-                                                        "PBHL GOLD BRICK",
-                                                        load_image_from_memory(GOLD_BAR).unwrap(),
-                                                    ),
-                                                    (32., 32.),
-                                                ))
-                                                .clicked()
-                                            {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::GoldBrick
-                                                                && x.raid == Raid::PBHL
-                                                                && x.chest == ChestType::Blue
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::PBHL,
-                                                        Item::GoldBrick,
-                                                        ChestType::Blue,
-                                                        Option::Some(format!(
-                                                            "{}",
-                                                            self.pbhl_honors
-                                                        )),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::PBHL,
-                                                            Item::GoldBrick,
-                                                            ChestType::Blue,
-                                                            Option::Some(format!(
-                                                                "{}",
-                                                                self.pbhl_honors
-                                                            )),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        if self.config.app_settings.button_label_combo[0] {
-                                            if ui.button("Gold Brick").clicked() {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::GoldBrick
-                                                                && x.raid == Raid::PBHL
-                                                                && x.chest == ChestType::Blue
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::PBHL,
-                                                        Item::GoldBrick,
-                                                        ChestType::Blue,
-                                                        Option::Some(format!(
-                                                            "{}",
-                                                            self.pbhl_honors
-                                                        )),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::PBHL,
-                                                            Item::GoldBrick,
-                                                            ChestType::Blue,
-                                                            Option::Some(format!(
-                                                                "{}",
-                                                                self.pbhl_honors
-                                                            )),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        let drop_count = self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .filter(|x| {
-                                                x.item == Item::GoldBrick
-                                                    && x.raid == Raid::PBHL
-                                                    && x.chest == ChestType::Blue
-                                            })
-                                            .count();
-                                        ui.label("x".to_string() + &drop_count.to_string());
-                                    });
-                                }
-                                if self.config.app_settings.active_items[13]
-                                    || self.config.app_settings.active_items[14]
-                                {
-                                    ui.end_row();
-                                }
-                                if self.config.app_settings.active_items[15] {
-                                    ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 3.;
-                                        let local_last_added_drop = &self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .rposition(|x| {
-                                                x.item == Item::CoronationRing
-                                                    && x.raid == Raid::PBHL
-                                            })
-                                            .unwrap_or_default();
-                                        if self.config.app_settings.button_label_combo[1] {
-                                            if ui
-                                                .add(CustomImageButton::new(
-                                                    &ui.ctx().load_texture(
-                                                        "PBHL CORONATION RING",
-                                                        load_image_from_memory(C_RING).unwrap(),
-                                                    ),
-                                                    (32., 32.),
-                                                ))
-                                                .clicked()
-                                            {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::CoronationRing
-                                                                && x.raid == Raid::PBHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::PBHL,
-                                                        Item::CoronationRing,
-                                                        ChestType::Blue,
-                                                        Option::Some(format!(
-                                                            "{}",
-                                                            self.pbhl_honors
-                                                        )),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::PBHL,
-                                                            Item::CoronationRing,
-                                                            ChestType::Blue,
-                                                            Option::Some(format!(
-                                                                "{}",
-                                                                self.pbhl_honors
-                                                            )),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        if self.config.app_settings.button_label_combo[0] {
-                                            if ui.button("Coronation Ring").clicked() {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::CoronationRing
-                                                                && x.raid == Raid::PBHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::PBHL,
-                                                        Item::CoronationRing,
-                                                        ChestType::Blue,
-                                                        Option::Some(format!(
-                                                            "{}",
-                                                            self.pbhl_honors
-                                                        )),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::PBHL,
-                                                            Item::CoronationRing,
-                                                            ChestType::Blue,
-                                                            Option::Some(format!(
-                                                                "{}",
-                                                                self.pbhl_honors
-                                                            )),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        let drop_count = self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .filter(|x| {
-                                                x.item == Item::CoronationRing
-                                                    && x.raid == Raid::PBHL
-                                            })
-                                            .count();
-                                        ui.label("x".to_string() + &drop_count.to_string());
-                                    });
-                                }
-                                if self.config.app_settings.active_items[16] {
-                                    ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 3.;
-                                        let local_last_added_drop = &self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .rposition(|x| {
-                                                x.item == Item::LineageRing && x.raid == Raid::PBHL
-                                            })
-                                            .unwrap_or_default();
-                                        if self.config.app_settings.button_label_combo[1] {
-                                            if ui
-                                                .add(CustomImageButton::new(
-                                                    &ui.ctx().load_texture(
-                                                        "PBHL LINEAGE RING",
-                                                        load_image_from_memory(L_RING).unwrap(),
-                                                    ),
-                                                    (32., 32.),
-                                                ))
-                                                .clicked()
-                                            {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::LineageRing
-                                                                && x.raid == Raid::PBHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::PBHL,
-                                                        Item::LineageRing,
-                                                        ChestType::Blue,
-                                                        Option::Some(format!(
-                                                            "{}",
-                                                            self.pbhl_honors
-                                                        )),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::PBHL,
-                                                            Item::LineageRing,
-                                                            ChestType::Blue,
-                                                            Option::Some(format!(
-                                                                "{}",
-                                                                self.pbhl_honors
-                                                            )),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        if self.config.app_settings.button_label_combo[0] {
-                                            if ui.button("Lineage Ring").clicked() {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::LineageRing
-                                                                && x.raid == Raid::PBHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::PBHL,
-                                                        Item::LineageRing,
-                                                        ChestType::Blue,
-                                                        Option::Some(format!(
-                                                            "{}",
-                                                            self.pbhl_honors
-                                                        )),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::PBHL,
-                                                            Item::LineageRing,
-                                                            ChestType::Blue,
-                                                            Option::Some(format!(
-                                                                "{}",
-                                                                self.pbhl_honors
-                                                            )),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        let drop_count = self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .filter(|x| {
-                                                x.item == Item::LineageRing && x.raid == Raid::PBHL
-                                            })
-                                            .count();
-                                        ui.label("x".to_string() + &drop_count.to_string());
-                                    });
-                                }
-                                if self.config.app_settings.active_items[17] {
-                                    ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 3.;
-                                        let local_last_added_drop = &self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .rposition(|x| {
-                                                x.item == Item::IntricacyRing
-                                                    && x.raid == Raid::PBHL
-                                            })
-                                            .unwrap_or_default();
-                                        if self.config.app_settings.button_label_combo[1] {
-                                            if ui
-                                                .add(CustomImageButton::new(
-                                                    &ui.ctx().load_texture(
-                                                        "PBHL INTRICACY RING",
-                                                        load_image_from_memory(I_RING).unwrap(),
-                                                    ),
-                                                    (32., 32.),
-                                                ))
-                                                .clicked()
-                                            {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::IntricacyRing
-                                                                && x.raid == Raid::PBHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::PBHL,
-                                                        Item::IntricacyRing,
-                                                        ChestType::Blue,
-                                                        Option::Some(format!(
-                                                            "{}",
-                                                            self.pbhl_honors
-                                                        )),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::PBHL,
-                                                            Item::IntricacyRing,
-                                                            ChestType::Blue,
-                                                            Option::Some(format!(
-                                                                "{}",
-                                                                self.pbhl_honors
-                                                            )),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        if self.config.app_settings.button_label_combo[0] {
-                                            if ui.button("Intricacy Ring").clicked() {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::IntricacyRing
-                                                                && x.raid == Raid::PBHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::PBHL,
-                                                        Item::IntricacyRing,
-                                                        ChestType::Blue,
-                                                        Option::Some(format!(
-                                                            "{}",
-                                                            self.pbhl_honors
-                                                        )),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::PBHL,
-                                                            Item::IntricacyRing,
-                                                            ChestType::Blue,
-                                                            Option::Some(format!(
-                                                                "{}",
-                                                                self.pbhl_honors
-                                                            )),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        let drop_count = self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .filter(|x| {
-                                                x.item == Item::IntricacyRing
-                                                    && x.raid == Raid::PBHL
-                                            })
-                                            .count();
-                                        ui.label("x".to_string() + &drop_count.to_string());
-                                    });
-                                }
-                                if self.config.app_settings.active_items[15]
-                                    || self.config.app_settings.active_items[16]
-                                    || self.config.app_settings.active_items[17]
-                                {
-                                    ui.end_row();
+                                ui.style_mut().wrap = Some(false);
+                                if !self.config.app_settings.vertical_grid {
+                                    if self.config.app_settings.active_items[13] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::NoDrop,
+                                                Raid::PBHL,
+                                                ChestType::None,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[14] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::GoldBrick,
+                                                Raid::PBHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[13]
+                                        || self.config.app_settings.active_items[14]
+                                    {
+                                        ui.end_row();
+                                    }
+                                    if self.config.app_settings.active_items[15] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::CoronationRing,
+                                                Raid::PBHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[16] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::LineageRing,
+                                                Raid::PBHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[17] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::IntricacyRing,
+                                                Raid::PBHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[15]
+                                        || self.config.app_settings.active_items[16]
+                                        || self.config.app_settings.active_items[17]
+                                    {
+                                        ui.end_row();
+                                    }
+                                } else {
+                                    if self.config.app_settings.active_items[13] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::NoDrop,
+                                                Raid::PBHL,
+                                                ChestType::None,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[14] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::GoldBrick,
+                                                Raid::PBHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[13]
+                                        || self.config.app_settings.active_items[14]
+                                    {
+                                        ui.end_row();
+                                    }
+                                    if self.config.app_settings.active_items[15] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::CoronationRing,
+                                                Raid::PBHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[16] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::LineageRing,
+                                                Raid::PBHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[17] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::IntricacyRing,
+                                                Raid::PBHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[15]
+                                        || self.config.app_settings.active_items[16]
+                                        || self.config.app_settings.active_items[17]
+                                    {
+                                        ui.end_row();
+                                    }
                                 }
                             });
 
@@ -1961,6 +1543,7 @@ impl epi::App for AppDorothy {
                         egui::Grid::new("pbhl_honors_grid")
                             .spacing((15., 10.))
                             .show(ui, |ui| {
+                                ui.style_mut().wrap = Some(false);
                                 ui.selectable_value(
                                     &mut self.pbhl_honors,
                                     PBHLHonors::Ignore,
@@ -2011,1527 +1594,283 @@ impl epi::App for AppDorothy {
                                 self.config.app_settings.grid_spacing_y,
                             ))
                             .show(ui, |ui| {
-                                if self.config.app_settings.active_items[18] {
-                                    ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 3.;
-                                        let local_last_added_drop = &self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .rposition(|x| {
-                                                x.item == Item::NoDrop && x.raid == Raid::GOHL
-                                            })
-                                            .unwrap_or_default();
-                                        if self.config.app_settings.button_label_combo[1] {
-                                            if ui
-                                                .add(CustomImageButton::new(
-                                                    &ui.ctx().load_texture(
-                                                        "GOHL NO DROP",
-                                                        load_image_from_memory(NO_BLUE_CHEST)
-                                                            .unwrap(),
-                                                    ),
-                                                    (32., 32.),
-                                                ))
-                                                .clicked()
-                                            {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::NoDrop
-                                                                && x.raid == Raid::GOHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::GOHL,
-                                                        Item::NoDrop,
-                                                        ChestType::None,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::GOHL,
-                                                            Item::NoDrop,
-                                                            ChestType::None,
-                                                            Option::Some("None".to_string()),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        if self.config.app_settings.button_label_combo[0] {
-                                            if ui.button("No Drop").clicked() {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::NoDrop
-                                                                && x.raid == Raid::GOHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::GOHL,
-                                                        Item::NoDrop,
-                                                        ChestType::None,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::GOHL,
-                                                            Item::NoDrop,
-                                                            ChestType::None,
-                                                            Option::Some("None".to_string()),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        let drop_count = self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .filter(|x| {
-                                                x.item == Item::NoDrop && x.raid == Raid::GOHL
-                                            })
-                                            .count();
-                                        ui.label("x".to_string() + &drop_count.to_string());
-                                    });
-                                }
-                                if self.config.app_settings.active_items[19] {
-                                    ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 3.;
-                                        let local_last_added_drop = &self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .rposition(|x| {
-                                                x.item == Item::VerdantAzurite
-                                                    && x.raid == Raid::GOHL
-                                            })
-                                            .unwrap_or_default();
-                                        if self.config.app_settings.button_label_combo[1] {
-                                            if ui
-                                                .add(CustomImageButton::new(
-                                                    &ui.ctx().load_texture(
-                                                        "VERDANT AZURITE",
-                                                        load_image_from_memory(VERDANT_AZURITE)
-                                                            .unwrap(),
-                                                    ),
-                                                    (32., 32.),
-                                                ))
-                                                .clicked()
-                                            {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::VerdantAzurite
-                                                                && x.raid == Raid::GOHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::GOHL,
-                                                        Item::VerdantAzurite,
-                                                        ChestType::Blue,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::GOHL,
-                                                            Item::VerdantAzurite,
-                                                            ChestType::Blue,
-                                                            Option::Some("None".to_string()),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        if self.config.app_settings.button_label_combo[0] {
-                                            if ui.button("Verdant Azurite").clicked() {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::VerdantAzurite
-                                                                && x.raid == Raid::GOHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::GOHL,
-                                                        Item::VerdantAzurite,
-                                                        ChestType::Blue,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::GOHL,
-                                                            Item::VerdantAzurite,
-                                                            ChestType::Blue,
-                                                            Option::Some("None".to_string()),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        let drop_count = self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .filter(|x| {
-                                                x.item == Item::VerdantAzurite
-                                                    && x.raid == Raid::GOHL
-                                            })
-                                            .count();
-                                        ui.label("x".to_string() + &drop_count.to_string());
-                                    });
-                                }
-                                if self.config.app_settings.active_items[20] {
-                                    ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 3.;
-                                        let local_last_added_drop = &self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .rposition(|x| {
-                                                x.item == Item::SilverCentrum
-                                                    && x.raid == Raid::GOHL
-                                            })
-                                            .unwrap_or_default();
-                                        if self.config.app_settings.button_label_combo[1] {
-                                            if ui
-                                                .add(CustomImageButton::new(
-                                                    &ui.ctx().load_texture(
-                                                        "GOHL SILVER CENTRUM",
-                                                        load_image_from_memory(SILVER_CENTRUM)
-                                                            .unwrap(),
-                                                    ),
-                                                    (32., 32.),
-                                                ))
-                                                .clicked()
-                                            {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::SilverCentrum
-                                                                && x.raid == Raid::GOHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::GOHL,
-                                                        Item::SilverCentrum,
-                                                        ChestType::Blue,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::GOHL,
-                                                            Item::SilverCentrum,
-                                                            ChestType::Blue,
-                                                            Option::Some("None".to_string()),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        if self.config.app_settings.button_label_combo[0] {
-                                            if ui.button("Silver Centrum").clicked() {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::SilverCentrum
-                                                                && x.raid == Raid::GOHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::GOHL,
-                                                        Item::SilverCentrum,
-                                                        ChestType::Blue,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::GOHL,
-                                                            Item::SilverCentrum,
-                                                            ChestType::Blue,
-                                                            Option::Some("None".to_string()),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        let drop_count = self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .filter(|x| {
-                                                x.item == Item::SilverCentrum
-                                                    && x.raid == Raid::GOHL
-                                            })
-                                            .count();
-                                        ui.label("x".to_string() + &drop_count.to_string());
-                                    });
-                                }
-                                if self.config.app_settings.active_items[21] {
-                                    ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 3.;
-                                        let local_last_added_drop = &self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .rposition(|x| {
-                                                x.item == Item::GoldBrick && x.raid == Raid::GOHL
-                                            })
-                                            .unwrap_or_default();
-                                        if self.config.app_settings.button_label_combo[1] {
-                                            if ui
-                                                .add(CustomImageButton::new(
-                                                    &ui.ctx().load_texture(
-                                                        "GOHL GOLD BRICK",
-                                                        load_image_from_memory(GOLD_BAR).unwrap(),
-                                                    ),
-                                                    (32., 32.),
-                                                ))
-                                                .clicked()
-                                            {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::GoldBrick
-                                                                && x.raid == Raid::GOHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::GOHL,
-                                                        Item::GoldBrick,
-                                                        ChestType::Blue,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::GOHL,
-                                                            Item::GoldBrick,
-                                                            ChestType::Blue,
-                                                            Option::Some("None".to_string()),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        if self.config.app_settings.button_label_combo[0] {
-                                            if ui.button("Gold Brick").clicked() {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::GoldBrick
-                                                                && x.raid == Raid::GOHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::GOHL,
-                                                        Item::GoldBrick,
-                                                        ChestType::Blue,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::GOHL,
-                                                            Item::GoldBrick,
-                                                            ChestType::Blue,
-                                                            Option::Some("None".to_string()),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        let drop_count = self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .filter(|x| {
-                                                x.item == Item::GoldBrick && x.raid == Raid::GOHL
-                                            })
-                                            .count();
-                                        ui.label("x".to_string() + &drop_count.to_string());
-                                    });
-                                }
-                                if self.config.app_settings.active_items[18]
-                                    || self.config.app_settings.active_items[19]
-                                    || self.config.app_settings.active_items[20]
-                                    || self.config.app_settings.active_items[21]
-                                {
-                                    ui.end_row();
-                                }
-                                if self.config.app_settings.active_items[22] {
-                                    ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 3.;
-                                        let local_last_added_drop = &self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .rposition(|x| {
-                                                x.item == Item::CoronationRing
-                                                    && x.raid == Raid::GOHL
-                                            })
-                                            .unwrap_or_default();
-                                        if self.config.app_settings.button_label_combo[1] {
-                                            if ui
-                                                .add(CustomImageButton::new(
-                                                    &ui.ctx().load_texture(
-                                                        "GOHL CORONATION RING",
-                                                        load_image_from_memory(C_RING).unwrap(),
-                                                    ),
-                                                    (32., 32.),
-                                                ))
-                                                .clicked()
-                                            {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::CoronationRing
-                                                                && x.raid == Raid::GOHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::GOHL,
-                                                        Item::CoronationRing,
-                                                        ChestType::Blue,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::GOHL,
-                                                            Item::CoronationRing,
-                                                            ChestType::Blue,
-                                                            Option::Some("None".to_string()),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        if self.config.app_settings.button_label_combo[0] {
-                                            if ui.button("Coronation Ring").clicked() {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::CoronationRing
-                                                                && x.raid == Raid::GOHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::GOHL,
-                                                        Item::CoronationRing,
-                                                        ChestType::Blue,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::GOHL,
-                                                            Item::CoronationRing,
-                                                            ChestType::Blue,
-                                                            Option::Some("None".to_string()),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        let drop_count = self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .filter(|x| {
-                                                x.item == Item::CoronationRing
-                                                    && x.raid == Raid::GOHL
-                                            })
-                                            .count();
-                                        ui.label("x".to_string() + &drop_count.to_string());
-                                    });
-                                }
-                                if self.config.app_settings.active_items[23] {
-                                    ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 3.;
-                                        let local_last_added_drop = &self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .rposition(|x| {
-                                                x.item == Item::ChampionMerit
-                                                    && x.raid == Raid::GOHL
-                                            })
-                                            .unwrap_or_default();
-                                        if self.config.app_settings.button_label_combo[1] {
-                                            if ui
-                                                .add(CustomImageButton::new(
-                                                    &ui.ctx().load_texture(
-                                                        "GOHL CHAMPION MERIT",
-                                                        load_image_from_memory(C_MERIT).unwrap(),
-                                                    ),
-                                                    (32., 32.),
-                                                ))
-                                                .clicked()
-                                            {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::ChampionMerit
-                                                                && x.raid == Raid::GOHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::GOHL,
-                                                        Item::ChampionMerit,
-                                                        ChestType::Blue,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::GOHL,
-                                                            Item::ChampionMerit,
-                                                            ChestType::Blue,
-                                                            Option::Some("None".to_string()),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        if self.config.app_settings.button_label_combo[0] {
-                                            if ui.button("Champion Merit").clicked() {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::ChampionMerit
-                                                                && x.raid == Raid::GOHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::GOHL,
-                                                        Item::ChampionMerit,
-                                                        ChestType::Blue,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::GOHL,
-                                                            Item::ChampionMerit,
-                                                            ChestType::Blue,
-                                                            Option::Some("None".to_string()),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        let drop_count = self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .filter(|x| {
-                                                x.item == Item::ChampionMerit
-                                                    && x.raid == Raid::GOHL
-                                            })
-                                            .count();
-                                        ui.label("x".to_string() + &drop_count.to_string());
-                                    });
-                                }
-                                if self.config.app_settings.active_items[22]
-                                    || self.config.app_settings.active_items[23]
-                                {
-                                    ui.end_row();
-                                }
-                                if self.config.app_settings.active_items[24] {
-                                    ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 3.;
-                                        let local_last_added_drop = &self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .rposition(|x| {
-                                                x.item == Item::LineageRing && x.raid == Raid::GOHL
-                                            })
-                                            .unwrap_or_default();
-                                        if self.config.app_settings.button_label_combo[1] {
-                                            if ui
-                                                .add(CustomImageButton::new(
-                                                    &ui.ctx().load_texture(
-                                                        "GOHL LINEAGE RING",
-                                                        load_image_from_memory(L_RING).unwrap(),
-                                                    ),
-                                                    (32., 32.),
-                                                ))
-                                                .clicked()
-                                            {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::LineageRing
-                                                                && x.raid == Raid::GOHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::GOHL,
-                                                        Item::LineageRing,
-                                                        ChestType::Blue,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::GOHL,
-                                                            Item::LineageRing,
-                                                            ChestType::Blue,
-                                                            Option::Some("None".to_string()),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        if self.config.app_settings.button_label_combo[0] {
-                                            if ui.button("Lineage Ring").clicked() {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::LineageRing
-                                                                && x.raid == Raid::GOHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::GOHL,
-                                                        Item::LineageRing,
-                                                        ChestType::Blue,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::GOHL,
-                                                            Item::LineageRing,
-                                                            ChestType::Blue,
-                                                            Option::Some("None".to_string()),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        let drop_count = self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .filter(|x| {
-                                                x.item == Item::LineageRing && x.raid == Raid::GOHL
-                                            })
-                                            .count();
-                                        ui.label("x".to_string() + &drop_count.to_string());
-                                    });
-                                }
-                                if self.config.app_settings.active_items[25] {
-                                    ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 3.;
-                                        let local_last_added_drop = &self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .rposition(|x| {
-                                                x.item == Item::SupremeMerit && x.raid == Raid::GOHL
-                                            })
-                                            .unwrap_or_default();
-                                        if self.config.app_settings.button_label_combo[1] {
-                                            if ui
-                                                .add(CustomImageButton::new(
-                                                    &ui.ctx().load_texture(
-                                                        "GOHL SUPREME MERIT",
-                                                        load_image_from_memory(S_MERIT).unwrap(),
-                                                    ),
-                                                    (32., 32.),
-                                                ))
-                                                .clicked()
-                                            {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::SupremeMerit
-                                                                && x.raid == Raid::GOHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::GOHL,
-                                                        Item::SupremeMerit,
-                                                        ChestType::Blue,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::GOHL,
-                                                            Item::SupremeMerit,
-                                                            ChestType::Blue,
-                                                            Option::Some("None".to_string()),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        if self.config.app_settings.button_label_combo[0] {
-                                            if ui.button("Supreme Merit").clicked() {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::SupremeMerit
-                                                                && x.raid == Raid::GOHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::GOHL,
-                                                        Item::SupremeMerit,
-                                                        ChestType::Blue,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::GOHL,
-                                                            Item::SupremeMerit,
-                                                            ChestType::Blue,
-                                                            Option::Some("None".to_string()),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        let drop_count = self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .filter(|x| {
-                                                x.item == Item::SupremeMerit && x.raid == Raid::GOHL
-                                            })
-                                            .count();
-                                        ui.label("x".to_string() + &drop_count.to_string());
-                                    });
-                                }
-                                if self.config.app_settings.active_items[24]
-                                    || self.config.app_settings.active_items[25]
-                                {
-                                    ui.end_row();
-                                }
-                                if self.config.app_settings.active_items[26] {
-                                    ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 3.;
-                                        let local_last_added_drop = &self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .rposition(|x| {
-                                                x.item == Item::IntricacyRing
-                                                    && x.raid == Raid::GOHL
-                                            })
-                                            .unwrap_or_default();
-                                        if self.config.app_settings.button_label_combo[1] {
-                                            if ui
-                                                .add(CustomImageButton::new(
-                                                    &ui.ctx().load_texture(
-                                                        "GOHL INTRICACY RING",
-                                                        load_image_from_memory(I_RING).unwrap(),
-                                                    ),
-                                                    (32., 32.),
-                                                ))
-                                                .clicked()
-                                            {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::IntricacyRing
-                                                                && x.raid == Raid::GOHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::GOHL,
-                                                        Item::IntricacyRing,
-                                                        ChestType::Blue,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::GOHL,
-                                                            Item::IntricacyRing,
-                                                            ChestType::Blue,
-                                                            Option::Some("None".to_string()),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        if self.config.app_settings.button_label_combo[0] {
-                                            if ui.button("Intricacy Ring").clicked() {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::IntricacyRing
-                                                                && x.raid == Raid::GOHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::GOHL,
-                                                        Item::IntricacyRing,
-                                                        ChestType::Blue,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::GOHL,
-                                                            Item::IntricacyRing,
-                                                            ChestType::Blue,
-                                                            Option::Some("None".to_string()),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        let drop_count = self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .filter(|x| {
-                                                x.item == Item::IntricacyRing
-                                                    && x.raid == Raid::GOHL
-                                            })
-                                            .count();
-                                        ui.label("x".to_string() + &drop_count.to_string());
-                                    });
-                                }
-                                if self.config.app_settings.active_items[27] {
-                                    ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 3.;
-                                        let local_last_added_drop = &self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .rposition(|x| {
-                                                x.item == Item::LegendaryMerit
-                                                    && x.raid == Raid::GOHL
-                                            })
-                                            .unwrap_or_default();
-                                        if self.config.app_settings.button_label_combo[1] {
-                                            if ui
-                                                .add(CustomImageButton::new(
-                                                    &ui.ctx().load_texture(
-                                                        "GOHL LEGENDARY MERIT",
-                                                        load_image_from_memory(L_MERIT).unwrap(),
-                                                    ),
-                                                    (32., 32.),
-                                                ))
-                                                .clicked()
-                                            {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::LegendaryMerit
-                                                                && x.raid == Raid::GOHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::GOHL,
-                                                        Item::LegendaryMerit,
-                                                        ChestType::Blue,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::GOHL,
-                                                            Item::LegendaryMerit,
-                                                            ChestType::Blue,
-                                                            Option::Some("None".to_string()),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        if self.config.app_settings.button_label_combo[0] {
-                                            if ui.button("Legendary Merit").clicked() {
-                                                let shift = ui.input().modifiers.shift_only();
-                                                if shift {
-                                                    if &self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .iter()
-                                                        .filter(|&x| {
-                                                            x.item == Item::LegendaryMerit
-                                                                && x.raid == Raid::GOHL
-                                                        })
-                                                        .count()
-                                                        > &0
-                                                    {
-                                                        let _ = self
-                                                            .config
-                                                            .droplog
-                                                            .drop
-                                                            .remove(*local_last_added_drop);
-                                                    }
-                                                } else if !shift {
-                                                    let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::GOHL,
-                                                        Item::LegendaryMerit,
-                                                        ChestType::Blue,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                                    let _ = self.config.droplog.drop.push(
-                                                        ItemDrop::new(
-                                                            self.config
-                                                                .droplog
-                                                                .drop
-                                                                .clone()
-                                                                .iter()
-                                                                .count()
-                                                                .try_into()
-                                                                .unwrap(),
-                                                            get_time(),
-                                                            Raid::GOHL,
-                                                            Item::LegendaryMerit,
-                                                            ChestType::Blue,
-                                                            Option::Some("None".to_string()),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        let drop_count = self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .filter(|x| {
-                                                x.item == Item::LegendaryMerit
-                                                    && x.raid == Raid::GOHL
-                                            })
-                                            .count();
-                                        ui.label("x".to_string() + &drop_count.to_string());
-                                    });
+                                ui.style_mut().wrap = Some(false);
+                                if !self.config.app_settings.vertical_grid {
+                                    if self.config.app_settings.active_items[18] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::NoDrop,
+                                                Raid::GOHL,
+                                                ChestType::None,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[19] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::VerdantAzurite,
+                                                Raid::GOHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[20] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::SilverCentrum,
+                                                Raid::GOHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[21] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::GoldBrick,
+                                                Raid::GOHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[18]
+                                        || self.config.app_settings.active_items[19]
+                                        || self.config.app_settings.active_items[20]
+                                        || self.config.app_settings.active_items[21]
+                                    {
+                                        ui.end_row();
+                                    }
+                                    if self.config.app_settings.active_items[22] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::CoronationRing,
+                                                Raid::GOHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[23] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::ChampionMerit,
+                                                Raid::GOHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[22]
+                                        || self.config.app_settings.active_items[23]
+                                    {
+                                        ui.end_row();
+                                    }
+                                    if self.config.app_settings.active_items[24] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::LineageRing,
+                                                Raid::GOHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[25] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::SupremeMerit,
+                                                Raid::GOHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[24]
+                                        || self.config.app_settings.active_items[25]
+                                    {
+                                        ui.end_row();
+                                    }
+                                    if self.config.app_settings.active_items[26] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::IntricacyRing,
+                                                Raid::GOHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[27] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::LegendaryMerit,
+                                                Raid::GOHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                } else {
+                                    if self.config.app_settings.active_items[18] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::NoDrop,
+                                                Raid::GOHL,
+                                                ChestType::None,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[19] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::VerdantAzurite,
+                                                Raid::GOHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[20] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::SilverCentrum,
+                                                Raid::GOHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[21] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::GoldBrick,
+                                                Raid::GOHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[18]
+                                        || self.config.app_settings.active_items[19]
+                                        || self.config.app_settings.active_items[20]
+                                        || self.config.app_settings.active_items[21]
+                                    {
+                                        ui.end_row();
+                                    }
+                                    if self.config.app_settings.active_items[22] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::CoronationRing,
+                                                Raid::GOHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[23] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::ChampionMerit,
+                                                Raid::GOHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[22]
+                                        || self.config.app_settings.active_items[23]
+                                    {
+                                        ui.end_row();
+                                    }
+                                    if self.config.app_settings.active_items[24] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::LineageRing,
+                                                Raid::GOHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[25] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::SupremeMerit,
+                                                Raid::GOHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[24]
+                                        || self.config.app_settings.active_items[25]
+                                    {
+                                        ui.end_row();
+                                    }
+                                    if self.config.app_settings.active_items[26] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::IntricacyRing,
+                                                Raid::GOHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[27] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::LegendaryMerit,
+                                                Raid::GOHL,
+                                                ChestType::Blue,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
                                 }
                             });
                     }
@@ -3542,616 +1881,268 @@ impl epi::App for AppDorothy {
                                 self.config.app_settings.grid_spacing_y,
                             ))
                             .show(ui, |ui| {
-                                if self.config.app_settings.active_items[28] {
-                                    ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 3.;
-                                        let local_last_added_drop = &self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .rposition(|x| {
-                                                x.item == Item::GoldBrick
-                                                    && x.raid == Raid::UBHL
-                                                    && x.chest == ChestType::Host
-                                            })
-                                            .unwrap_or_default();
-                                        if ui
-                                            .add(CustomImageButton::new(
-                                                &ui.ctx().load_texture(
-                                                    "UBHL HOST BAR",
-                                                    load_image_from_memory(GOLD_BAR).unwrap(),
-                                                ),
-                                                (32., 32.),
-                                            ))
-                                            .clicked()
-                                        {
-                                            let shift = ui.input().modifiers.shift_only();
-                                            if shift {
-                                                if &self
-                                                    .config
-                                                    .droplog
-                                                    .drop
-                                                    .iter()
-                                                    .filter(|&x| {
-                                                        x.item == Item::GoldBrick
-                                                            && x.raid == Raid::UBHL
-                                                            && x.chest == ChestType::Host
-                                                    })
-                                                    .count()
-                                                    > &0
-                                                {
-                                                    let _ = self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .remove(*local_last_added_drop);
-                                                }
-                                            } else if !shift {
-                                                let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                    self.config
-                                                        .droplog
-                                                        .drop
-                                                        .clone()
-                                                        .iter()
-                                                        .count()
-                                                        .try_into()
-                                                        .unwrap(),
-                                                    get_time(),
-                                                    Raid::UBHL,
-                                                    Item::GoldBrick,
-                                                    ChestType::Host,
-                                                    Option::Some("None".to_string()),
-                                                ));
-                                                let _ =
-                                                    self.config.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::UBHL,
-                                                        Item::GoldBrick,
-                                                        ChestType::Host,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                            }
-                                        }
-                                        if ui.button("UBHL Host").clicked() {
-                                            let shift = ui.input().modifiers.shift_only();
-                                            if shift {
-                                                if &self
-                                                    .config
-                                                    .droplog
-                                                    .drop
-                                                    .iter()
-                                                    .filter(|&x| {
-                                                        x.item == Item::GoldBrick
-                                                            && x.raid == Raid::UBHL
-                                                            && x.chest == ChestType::Host
-                                                    })
-                                                    .count()
-                                                    > &0
-                                                {
-                                                    let _ = self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .remove(*local_last_added_drop);
-                                                }
-                                            } else if !shift {
-                                                let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                    self.config
-                                                        .droplog
-                                                        .drop
-                                                        .clone()
-                                                        .iter()
-                                                        .count()
-                                                        .try_into()
-                                                        .unwrap(),
-                                                    get_time(),
-                                                    Raid::UBHL,
-                                                    Item::GoldBrick,
-                                                    ChestType::Host,
-                                                    Option::Some("None".to_string()),
-                                                ));
-                                                let _ =
-                                                    self.config.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::UBHL,
-                                                        Item::GoldBrick,
-                                                        ChestType::Host,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                            }
-                                        }
-                                        let drop_count = self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .filter(|x| {
-                                                x.item == Item::GoldBrick
-                                                    && x.raid == Raid::UBHL
-                                                    && x.chest == ChestType::Host
-                                            })
-                                            .count();
-                                        ui.label("x".to_string() + &drop_count.to_string());
-                                    });
-                                }
-                                if self.config.app_settings.active_items[29] {
-                                    ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 3.;
-                                        let local_last_added_drop = &self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .rposition(|x| {
-                                                x.item == Item::GoldBrick
-                                                    && x.raid == Raid::UBHL
-                                                    && x.chest == ChestType::Flip
-                                            })
-                                            .unwrap_or_default();
-                                        if ui
-                                            .add(CustomImageButton::new(
-                                                &ui.ctx().load_texture(
-                                                    "UBHL FLIP BAR",
-                                                    load_image_from_memory(GOLD_BAR).unwrap(),
-                                                ),
-                                                (32., 32.),
-                                            ))
-                                            .clicked()
-                                        {
-                                            let shift = ui.input().modifiers.shift_only();
-                                            if shift {
-                                                if &self
-                                                    .config
-                                                    .droplog
-                                                    .drop
-                                                    .iter()
-                                                    .filter(|&x| {
-                                                        x.item == Item::GoldBrick
-                                                            && x.raid == Raid::UBHL
-                                                            && x.chest == ChestType::Flip
-                                                    })
-                                                    .count()
-                                                    > &0
-                                                {
-                                                    let _ = self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .remove(*local_last_added_drop);
-                                                }
-                                            } else if !shift {
-                                                let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                    self.config
-                                                        .droplog
-                                                        .drop
-                                                        .clone()
-                                                        .iter()
-                                                        .count()
-                                                        .try_into()
-                                                        .unwrap(),
-                                                    get_time(),
-                                                    Raid::UBHL,
-                                                    Item::GoldBrick,
-                                                    ChestType::Flip,
-                                                    Option::Some("None".to_string()),
-                                                ));
-                                                let _ =
-                                                    self.config.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::UBHL,
-                                                        Item::GoldBrick,
-                                                        ChestType::Flip,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                            }
-                                        }
-                                        if ui.button("UBHL Flip").clicked() {
-                                            let shift = ui.input().modifiers.shift_only();
-                                            if shift {
-                                                if &self
-                                                    .config
-                                                    .droplog
-                                                    .drop
-                                                    .iter()
-                                                    .filter(|&x| {
-                                                        x.item == Item::GoldBrick
-                                                            && x.raid == Raid::UBHL
-                                                            && x.chest == ChestType::Flip
-                                                    })
-                                                    .count()
-                                                    > &0
-                                                {
-                                                    let _ = self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .remove(*local_last_added_drop);
-                                                }
-                                            } else if !shift {
-                                                let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                    self.config
-                                                        .droplog
-                                                        .drop
-                                                        .clone()
-                                                        .iter()
-                                                        .count()
-                                                        .try_into()
-                                                        .unwrap(),
-                                                    get_time(),
-                                                    Raid::UBHL,
-                                                    Item::GoldBrick,
-                                                    ChestType::Flip,
-                                                    Option::Some("None".to_string()),
-                                                ));
-                                                let _ =
-                                                    self.config.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::UBHL,
-                                                        Item::GoldBrick,
-                                                        ChestType::Flip,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                            }
-                                        }
-                                        let drop_count = self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .filter(|x| {
-                                                x.item == Item::GoldBrick
-                                                    && x.raid == Raid::UBHL
-                                                    && x.chest == ChestType::Flip
-                                            })
-                                            .count();
-                                        ui.label("x".to_string() + &drop_count.to_string());
-                                    });
-                                }
-                                if self.config.app_settings.active_items[30] {
-                                    ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 3.;
-                                        let local_last_added_drop = &self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .rposition(|x| {
-                                                x.item == Item::GoldBrick
-                                                    && x.raid == Raid::PBHL
-                                                    && x.chest == ChestType::Host
-                                            })
-                                            .unwrap_or_default();
-                                        if ui
-                                            .add(CustomImageButton::new(
-                                                &ui.ctx().load_texture(
-                                                    "PBHL HOST BAR",
-                                                    load_image_from_memory(GOLD_BAR).unwrap(),
-                                                ),
-                                                (32., 32.),
-                                            ))
-                                            .clicked()
-                                        {
-                                            let shift = ui.input().modifiers.shift_only();
-                                            if shift {
-                                                if &self
-                                                    .config
-                                                    .droplog
-                                                    .drop
-                                                    .iter()
-                                                    .filter(|&x| {
-                                                        x.item == Item::GoldBrick
-                                                            && x.raid == Raid::PBHL
-                                                            && x.chest == ChestType::Host
-                                                    })
-                                                    .count()
-                                                    > &0
-                                                {
-                                                    let _ = self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .remove(*local_last_added_drop);
-                                                }
-                                            } else if !shift {
-                                                let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                    self.config
-                                                        .droplog
-                                                        .drop
-                                                        .clone()
-                                                        .iter()
-                                                        .count()
-                                                        .try_into()
-                                                        .unwrap(),
-                                                    get_time(),
-                                                    Raid::PBHL,
-                                                    Item::GoldBrick,
-                                                    ChestType::Host,
-                                                    Option::Some("None".to_string()),
-                                                ));
-                                                let _ =
-                                                    self.config.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::PBHL,
-                                                        Item::GoldBrick,
-                                                        ChestType::Host,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                            }
-                                        }
-                                        if ui.button("PBHL Host").clicked() {
-                                            let shift = ui.input().modifiers.shift_only();
-                                            if shift {
-                                                if &self
-                                                    .config
-                                                    .droplog
-                                                    .drop
-                                                    .iter()
-                                                    .filter(|&x| {
-                                                        x.item == Item::GoldBrick
-                                                            && x.raid == Raid::PBHL
-                                                            && x.chest == ChestType::Host
-                                                    })
-                                                    .count()
-                                                    > &0
-                                                {
-                                                    let _ = self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .remove(*local_last_added_drop);
-                                                }
-                                            } else if !shift {
-                                                let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                    self.config
-                                                        .droplog
-                                                        .drop
-                                                        .clone()
-                                                        .iter()
-                                                        .count()
-                                                        .try_into()
-                                                        .unwrap(),
-                                                    get_time(),
-                                                    Raid::PBHL,
-                                                    Item::GoldBrick,
-                                                    ChestType::Host,
-                                                    Option::Some("None".to_string()),
-                                                ));
-                                                let _ =
-                                                    self.config.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::PBHL,
-                                                        Item::GoldBrick,
-                                                        ChestType::Host,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                            }
-                                        }
-                                        let drop_count = self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .filter(|x| {
-                                                x.item == Item::GoldBrick
-                                                    && x.raid == Raid::PBHL
-                                                    && x.chest == ChestType::Host
-                                            })
-                                            .count();
-                                        ui.label("x".to_string() + &drop_count.to_string());
-                                    });
-                                }
-                                if self.config.app_settings.active_items[31] {
-                                    ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 3.;
-                                        let local_last_added_drop = &self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .rposition(|x| {
-                                                x.item == Item::GoldBrick && x.raid == Raid::Xeno
-                                            })
-                                            .unwrap_or_default();
-                                        if ui
-                                            .add(CustomImageButton::new(
-                                                &ui.ctx().load_texture(
-                                                    "XENO FLIP BAR",
-                                                    load_image_from_memory(GOLD_BAR).unwrap(),
-                                                ),
-                                                (32., 32.),
-                                            ))
-                                            .clicked()
-                                        {
-                                            let shift = ui.input().modifiers.shift_only();
-                                            if shift {
-                                                if &self
-                                                    .config
-                                                    .droplog
-                                                    .drop
-                                                    .iter()
-                                                    .filter(|&x| {
-                                                        x.item == Item::GoldBrick
-                                                            && x.raid == Raid::Xeno
-                                                            && x.chest == ChestType::Flip
-                                                    })
-                                                    .count()
-                                                    > &0
-                                                {
-                                                    let _ = self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .remove(*local_last_added_drop);
-                                                }
-                                            } else if !shift {
-                                                let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                    self.config
-                                                        .droplog
-                                                        .drop
-                                                        .clone()
-                                                        .iter()
-                                                        .count()
-                                                        .try_into()
-                                                        .unwrap(),
-                                                    get_time(),
-                                                    Raid::Xeno,
-                                                    Item::GoldBrick,
-                                                    ChestType::Flip,
-                                                    Option::Some("None".to_string()),
-                                                ));
-                                                let _ =
-                                                    self.config.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::Xeno,
-                                                        Item::GoldBrick,
-                                                        ChestType::Flip,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                            }
-                                        }
-                                        if ui.button("Xeno").clicked() {
-                                            let shift = ui.input().modifiers.shift_only();
-                                            if shift {
-                                                if &self
-                                                    .config
-                                                    .droplog
-                                                    .drop
-                                                    .iter()
-                                                    .filter(|&x| {
-                                                        x.item == Item::GoldBrick
-                                                            && x.raid == Raid::Xeno
-                                                    })
-                                                    .count()
-                                                    > &0
-                                                {
-                                                    let _ = self
-                                                        .config
-                                                        .droplog
-                                                        .drop
-                                                        .remove(*local_last_added_drop);
-                                                }
-                                            } else if !shift {
-                                                let _ = &self.droplog.drop.push(ItemDrop::new(
-                                                    self.config
-                                                        .droplog
-                                                        .drop
-                                                        .clone()
-                                                        .iter()
-                                                        .count()
-                                                        .try_into()
-                                                        .unwrap(),
-                                                    get_time(),
-                                                    Raid::Xeno,
-                                                    Item::GoldBrick,
-                                                    ChestType::Flip,
-                                                    Option::Some("None".to_string()),
-                                                ));
-                                                let _ =
-                                                    self.config.droplog.drop.push(ItemDrop::new(
-                                                        self.config
-                                                            .droplog
-                                                            .drop
-                                                            .clone()
-                                                            .iter()
-                                                            .count()
-                                                            .try_into()
-                                                            .unwrap(),
-                                                        get_time(),
-                                                        Raid::Xeno,
-                                                        Item::GoldBrick,
-                                                        ChestType::Flip,
-                                                        Option::Some("None".to_string()),
-                                                    ));
-                                            }
-                                        }
-                                        let drop_count = self
-                                            .config
-                                            .droplog
-                                            .drop
-                                            .iter()
-                                            .filter(|x| {
-                                                x.item == Item::GoldBrick && x.raid == Raid::Xeno
-                                            })
-                                            .count();
-                                        ui.label("x".to_string() + &drop_count.to_string());
-                                    });
+                                ui.style_mut().wrap = Some(false);
+                                if !self.config.app_settings.vertical_grid {
+                                    if self.config.app_settings.active_items[28] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::GoldBrick,
+                                                Raid::UBHL,
+                                                ChestType::Host,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[29] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::GoldBrick,
+                                                Raid::UBHL,
+                                                ChestType::Flip,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[30] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::GoldBrick,
+                                                Raid::PBHL,
+                                                ChestType::Host,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[31] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::GoldBrick,
+                                                Raid::Xeno,
+                                                ChestType::Flip,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    ui.end_row();
+                                    if self.config.app_settings.active_items_2[0] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::GoldBrick,
+                                                Raid::Huanglong,
+                                                ChestType::Host,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items_2[1] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::GoldBrick,
+                                                Raid::Qilin,
+                                                ChestType::Host,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items_2[2] {
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                Item::GoldBrick,
+                                                Raid::HLQL,
+                                                ChestType::Host,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                } else {
+                                    if self.config.app_settings.active_items[28] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::GoldBrick,
+                                                Raid::UBHL,
+                                                ChestType::Host,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[29] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::GoldBrick,
+                                                Raid::UBHL,
+                                                ChestType::Flip,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[30] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::GoldBrick,
+                                                Raid::PBHL,
+                                                ChestType::Host,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items[31] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::GoldBrick,
+                                                Raid::Xeno,
+                                                ChestType::Flip,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    ui.end_row();
+                                    if self.config.app_settings.active_items_2[0] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::GoldBrick,
+                                                Raid::Huanglong,
+                                                ChestType::Host,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items_2[1] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::GoldBrick,
+                                                Raid::Qilin,
+                                                ChestType::Host,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
+                                    if self.config.app_settings.active_items_2[2] {
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                Item::GoldBrick,
+                                                Raid::HLQL,
+                                                ChestType::Host,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            );
+                                        });
+                                    }
                                 }
                             });
                     }
                 });
-            ui.add_space(50.);
-            egui::warn_if_debug_build(ui);
         });
         if !self.config.app_settings.button_label_combo[0]
             && !self.config.app_settings.button_label_combo[1]
         {
             egui::Window::new("Warning: Can't log items!").show(ctx, |ui| {
                 ui.label(
-                    "Oh you've really screwed up now haven't you? Turn one of those back on."
+                    "Oh you've really screwed up now haven't you? Turn one of these back on to log your drops."
                         .to_string(),
                 );
+                if ui
+                    .checkbox(
+                        &mut self.config.app_settings.button_label_combo[0],
+                        "Show buttons",
+                    )
+                    .clicked(){}
+                if ui
+                    .checkbox(
+                        &mut self.config.app_settings.button_label_combo[1],
+                        "Show icons",
+                    )
+                    .clicked()
+                {
+                    local_settings_copy.app_settings.button_label_combo[1] =
+                        self.config.app_settings.button_label_combo[1];
+                }
             });
         }
         if self.config.app_settings.toggle_active_items {
-            egui::Window::new("Grid Features").vscroll(true).show(ctx, |ui| {
+            egui::Window::new("Center Panel Features").open(&mut self.config.app_settings.toggle_active_items).vscroll(true).show(ctx, |ui| {
 
+                    if ui
+                        .checkbox(
+                            &mut self.config.app_settings.active_items_2[20],
+                            "Show Pull Calculator Tab",
+                        )
+                        .clicked()
+                    {
+                        local_settings_copy.app_settings.active_items_2[20] =
+                            self.config.app_settings.active_items_2[20];
+
+                    }
+                    if ui
+                        .checkbox(
+                            &mut self.config.app_settings.active_items_2[21],
+                            "Show Akasha Tab",
+                        )
+                        .clicked()
+                    {
+                        local_settings_copy.app_settings.active_items_2[21] =
+                            self.config.app_settings.active_items_2[21];
+
+                    }
+                    if ui
+                        .checkbox(
+                            &mut self.config.app_settings.active_items_2[22],
+                            "Show PBHL Tab",
+                        )
+                        .clicked()
+                    {
+                        local_settings_copy.app_settings.active_items_2[22] =
+                            self.config.app_settings.active_items_2[22];
+
+                    }
+                    if ui
+                        .checkbox(
+                            &mut self.config.app_settings.active_items_2[23],
+                            "Show GOHL Tab",
+                        )
+                        .clicked()
+                    {
+                        local_settings_copy.app_settings.active_items_2[23] =
+                            self.config.app_settings.active_items_2[23];
+
+                    }
+                    if ui
+                        .checkbox(
+                            &mut self.config.app_settings.active_items_2[24],
+                            "Show Hosts Tab",
+                        )
+                        .clicked()
+                    {
+                        local_settings_copy.app_settings.active_items_2[24] =
+                            self.config.app_settings.active_items_2[24];
+
+                    }
                     if ui
                         .checkbox(
                             &mut self.config.app_settings.button_label_combo[0],
@@ -4167,6 +2158,17 @@ impl epi::App for AppDorothy {
                     {
                         local_settings_copy.app_settings.button_label_combo[1] =
                             self.config.app_settings.button_label_combo[1];
+                    }
+                    if ui
+                        .checkbox(
+                            &mut self.config.app_settings.active_items_2[26],
+                            "Show item counts",
+                        )
+                        .clicked()
+                    {
+                        local_settings_copy.app_settings.active_items_2[26] =
+                            self.config.app_settings.active_items_2[26];
+
                     }
                 if ui
                     .checkbox(
@@ -4548,6 +2550,39 @@ impl epi::App for AppDorothy {
                     {
                         local_settings_copy.app_settings.active_items[31] =
                             self.config.app_settings.active_items[31];
+
+                    }
+                    if ui
+                        .checkbox(
+                            &mut self.config.app_settings.active_items_2[0],
+                            "Show Huanglong Gold Bar",
+                        )
+                        .clicked()
+                    {
+                        local_settings_copy.app_settings.active_items_2[0] =
+                            self.config.app_settings.active_items_2[0];
+
+                    }
+                    if ui
+                        .checkbox(
+                            &mut self.config.app_settings.active_items_2[1],
+                            "Show Qilin Gold Bar",
+                        )
+                        .clicked()
+                    {
+                        local_settings_copy.app_settings.active_items_2[1] =
+                            self.config.app_settings.active_items_2[1];
+
+                    }
+                    if ui
+                        .checkbox(
+                            &mut self.config.app_settings.active_items_2[2],
+                            "Show HLQL Gold Bar",
+                        )
+                        .clicked()
+                    {
+                        local_settings_copy.app_settings.active_items_2[2] =
+                            self.config.app_settings.active_items_2[2];
 
                     }
 

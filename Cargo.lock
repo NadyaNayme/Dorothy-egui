@@ -719,6 +719,7 @@ dependencies = [
  "eframe",
  "egui_extras",
  "epi",
+ "format_num",
  "image",
  "js-sys",
  "open",
@@ -961,6 +962,15 @@ checksum = "5fc25a87fa4fd2094bffb06925852034d90a17f0d1e05197d4956d3555752191"
 dependencies = [
  "matches",
  "percent-encoding",
+]
+
+[[package]]
+name = "format_num"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14ac05eb8d2eb4ed1eeff847911deae077b0b53332465de9d6a26b0ea9961bc8"
+dependencies = [
+ "regex",
 ]
 
 [[package]]
