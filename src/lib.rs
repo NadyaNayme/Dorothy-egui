@@ -1,19 +1,19 @@
 #![forbid(unsafe_code)]
-//#![cfg_attr(not(debug_assertions), deny(warnings))]
 #![warn(clippy::all, rust_2018_idioms)]
 #![feature(derive_default_enum)]
 #![feature(drain_filter)]
 
+
+use eframe::egui::{widgets, Response, Sense, Ui, Widget, WidgetInfo, WidgetType};
+use eframe::epaint::{ColorImage, Rounding, TextureId, Vec2};
+use serde::{Deserialize, Serialize};
+
+//use chrono::{DateTime, Local};
+use std::{f32::INFINITY, fmt};
+use csv;
 use std::error::Error;
 use std::fs::{self, OpenOptions};
 use std::path::Path;
-use std::{f32::INFINITY, fmt};
-
-use chrono::{DateTime, Local};
-use csv;
-use eframe::egui::{self, widgets, Response, Sense, Ui, Widget, WidgetInfo, WidgetType};
-use eframe::epaint::{ColorImage, Rounding, TextureId, Vec2};
-use serde::{Deserialize, Serialize};
 
 pub mod app;
 
@@ -35,8 +35,9 @@ pub static GOLD_BAR: &[u8] = include_bytes!("./images/hihi.png");
 pub static DOROTHY: &[u8] = include_bytes!("./images/dorothy.ico");
 
 pub fn get_time() -> String {
-    let logged_time: DateTime<Local> = Local::now();
-    logged_time.format("%Y-%m-%d %H:%M:%S").to_string()
+    //let logged_time: DateTime<Local> = std::time::Duration::from_millis(stdweb::web::Date::now() as u64);
+    //logged_time.format("%Y-%m-%d %H:%M:%S").to_string()
+    "".to_string()
 }
 
 pub fn calculate_pulls(crystals: f32, tenners: f32, singles: f32) -> String {
@@ -55,12 +56,15 @@ pub fn get_percentage(x: f32, y: f32) -> String {
     return format!("{:.2}%", result);
 }
 
-pub fn load_image_from_path(path: &std::path::Path) -> Result<egui::ColorImage, image::ImageError> {
+#[cfg(not(target_arch = "wasm32"))]
+pub fn load_image_from_path(
+    path: &std::path::Path,
+) -> Result<eframe::egui::ColorImage, image::ImageError> {
     let image = image::io::Reader::open(path)?.decode()?;
     let size = [image.width() as _, image.height() as _];
     let image_buffer = image.to_rgba8();
     let pixels = image_buffer.as_flat_samples();
-    Ok(egui::ColorImage::from_rgba_unmultiplied(
+    Ok(eframe::egui::ColorImage::from_rgba_unmultiplied(
         size,
         pixels.as_slice(),
     ))
@@ -347,16 +351,15 @@ pub fn place_image_button_combo(
     ui.label("x".to_string() + &drop_count.to_string());
 }
 
-#[cfg(target_family = "windows")]
+#[cfg(not(target_arch = "wasm32"))]
 pub fn create_path(path: &str) -> std::io::Result<()> {
     fs::create_dir(path)?;
     Ok(())
 }
 
-#[cfg(target_family = "windows")]
 pub fn export(droplog: DropLog) -> Result<(), Box<dyn Error>> {
     let logged_drops = droplog.drop.iter().count().to_string();
-    let export_time: DateTime<Local> = Local::now();
+    let export_time: DateTime<Local> = std::time::Duration::from_millis(stdweb::web::Date::now() as u64);
     let export_four_digit_year = export_time.format("%Y").to_string();
     let export_month = export_time.format("%m").to_string();
     let export_day = export_time.format("%d").to_string();
@@ -743,7 +746,7 @@ impl Widget for CustomImageButton {
 }
 
 #[cfg(target_arch = "wasm32")]
-use crate::{app::AppDorothy};
+use crate::app::AppDorothy;
 #[cfg(target_arch = "wasm32")]
 use eframe::wasm_bindgen::{self, prelude::*};
 

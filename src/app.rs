@@ -49,10 +49,6 @@ impl epi::App for AppDorothy {
         epi::set_value(storage, epi::APP_KEY, self);
     }
 
-    fn auto_save_interval(&self) -> std::time::Duration {
-        std::time::Duration::from_secs(5)
-    }
-
     #[allow(unused_variables)]
     fn update(&mut self, ctx: &egui::Context, frame: &epi::Frame) {
         let Self {
@@ -86,6 +82,7 @@ impl epi::App for AppDorothy {
                     if ui.button("Reset Droplog").clicked() {
                         self.config.droplog.drop = DropLog::reset();
                     }
+                    #[cfg(not(target_arch = "wasm32"))]
                     if ui.button("Quit & Save").clicked() {
                         frame.quit();
                     }
@@ -142,6 +139,7 @@ impl epi::App for AppDorothy {
                         local_settings_copy.app_settings.dark_mode =
                             self.config.app_settings.dark_mode;
                     }
+                    #[cfg(not(target_arch = "wasm32"))]
                     if ui
                         .checkbox(&mut self.config.app_settings.always_on_top, "Always On Top")
                         .clicked()
