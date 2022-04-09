@@ -54,6 +54,7 @@ FOR /F %%i IN ('cargo metadata --format-version=1 ^| jq --raw-output .target_dir
 
 echo Generating JS bindings for wasm...
 SET TARGET_NAME=%CRATE_NAME_SNAKE_CASE%.wasm
+@REM --no-modules was removed from below line for sysweb compatibility
 wasm-bindgen "%TARGET%\wasm32-unknown-unknown\%BUILD%\%TARGET_NAME%" --out-dir "docs" --no-modules --no-typescript
 
 IF %FAST% == 0 (

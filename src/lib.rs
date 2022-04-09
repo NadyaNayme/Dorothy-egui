@@ -8,12 +8,15 @@ use eframe::egui::{widgets, Response, Sense, Ui, Widget, WidgetInfo, WidgetType}
 use eframe::epaint::{ColorImage, Rounding, TextureId, Vec2};
 use serde::{Deserialize, Serialize};
 
-//use chrono::{DateTime, Local};
 use std::{f32::INFINITY, fmt};
 use csv;
 use std::error::Error;
 use std::fs::{self, OpenOptions};
 use std::path::Path;
+#[cfg(target_arch = "wasm32")]
+use chrono::{NaiveDateTime, DateTime, Utc};
+#[cfg(not(target_arch = "wasm32"))]
+use chrono::{DateTime, Local};
 
 pub mod app;
 
@@ -34,10 +37,18 @@ pub static P_MARK_3: &[u8] = include_bytes!("./images/weapon_plus_mark_3.png");
 pub static GOLD_BAR: &[u8] = include_bytes!("./images/hihi.png");
 pub static DOROTHY: &[u8] = include_bytes!("./images/dorothy.ico");
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn get_time() -> String {
-    //let logged_time: DateTime<Local> = std::time::Duration::from_millis(stdweb::web::Date::now() as u64);
-    //logged_time.format("%Y-%m-%d %H:%M:%S").to_string()
-    "".to_string()
+    let logged_time: DateTime<Local> = Local::now();
+    logged_time.format("%Y-%m-%d %H:%M:%S").to_string()
+}
+// chrono crate doesn't support wasm32 arch yet, workaround
+#[cfg(target_arch = "wasm32")]
+pub fn get_time() -> String {
+    let now = js_sys::Date::now().to_string();
+    let now_as_epoch = now.parse::<i64>().unwrap();
+    let datetime = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp_opt(now_as_epoch / 1000, (now_as_epoch % 1000) as u32 * 1_000_000).unwrap(), Utc);
+    datetime.to_string()
 }
 
 pub fn calculate_pulls(crystals: f32, tenners: f32, singles: f32) -> String {
@@ -357,9 +368,10 @@ pub fn create_path(path: &str) -> std::io::Result<()> {
     Ok(())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn export(droplog: DropLog) -> Result<(), Box<dyn Error>> {
     let logged_drops = droplog.drop.iter().count().to_string();
-    let export_time: DateTime<Local> = std::time::Duration::from_millis(stdweb::web::Date::now() as u64);
+    let export_time: DateTime<Local> =  Local::now();
     let export_four_digit_year = export_time.format("%Y").to_string();
     let export_month = export_time.format("%m").to_string();
     let export_day = export_time.format("%d").to_string();

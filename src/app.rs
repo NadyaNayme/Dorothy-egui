@@ -49,6 +49,10 @@ impl epi::App for AppDorothy {
         epi::set_value(storage, epi::APP_KEY, self);
     }
 
+    fn auto_save_interval(&self) -> std::time::Duration {
+        std::time::Duration::from_secs(3)
+    }
+
     #[allow(unused_variables)]
     fn update(&mut self, ctx: &egui::Context, frame: &epi::Frame) {
         let Self {
