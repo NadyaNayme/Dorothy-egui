@@ -1,9 +1,9 @@
-var cacheName = 'dorothy-pwa';
+var cacheName = 'dorothy_egui-pwa';
 var filesToCache = [
   './',
   './index.html',
-  './dorothy.js',
-  './dorothy_bg.wasm',
+  './dorothy_egui.js',
+  './dorothy_egui_bg.wasm',
 ];
 
 /* Start the service worker and cache all of the app's content */

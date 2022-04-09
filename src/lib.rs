@@ -88,7 +88,13 @@ pub fn load_icon(icon_bytes: &Vec<u8>) -> Option<epi::IconData> {
     }
 }
 
-pub fn place_total_header(raid: Raid, item: Item, chest: ChestType, settings: &AppSettings, ui: &mut Ui) {
+pub fn place_total_header(
+    raid: Raid,
+    _item: Item,
+    _chest: ChestType,
+    settings: &AppSettings,
+    ui: &mut Ui,
+) {
     let mut total_drops_of_item = settings
         .droplog
         .drop
@@ -97,11 +103,15 @@ pub fn place_total_header(raid: Raid, item: Item, chest: ChestType, settings: &A
         .count();
     if raid == Raid::UBHL || raid == Raid::Xeno {
         total_drops_of_item = settings
-                .droplog
-                .drop
-                .iter()
-                .filter(|x| x.raid == Raid::UBHL || x.raid == Raid::Xeno || (x.raid == Raid::PBHL && x.chest == ChestType::Host))
-                .count();
+            .droplog
+            .drop
+            .iter()
+            .filter(|x| {
+                x.raid == Raid::UBHL
+                    || x.raid == Raid::Xeno
+                    || (x.raid == Raid::PBHL && x.chest == ChestType::Host)
+            })
+            .count();
     }
     let raid_heading: String = match raid {
         Raid::Akasha => "Akasha - ".to_string(),
@@ -109,27 +119,40 @@ pub fn place_total_header(raid: Raid, item: Item, chest: ChestType, settings: &A
         Raid::GOHL => "GOHL - ".to_string(),
         Raid::UBHL => "Hosts - ".to_string(),
         Raid::Xeno => "Hosts - ".to_string(),
-        _ => "".to_string(),
+        Raid::None => "".to_string(),
     };
     ui.add_space(20.);
-    ui.heading(raid_heading.to_owned() + &total_drops_of_item.to_string(),);
+    ui.heading(raid_heading.to_owned() + &total_drops_of_item.to_string());
     ui.add_space(5.);
 }
 
-pub fn place_percentage_label(raid: Raid, item: Item, chest: ChestType, settings: &AppSettings, ui: &mut Ui) {
+pub fn place_percentage_label(
+    raid: Raid,
+    item: Item,
+    chest: ChestType,
+    settings: &AppSettings,
+    ui: &mut Ui,
+) {
     let mut total_drops_of_item = settings
         .droplog
         .drop
         .iter()
         .filter(|x| x.raid == raid && x.chest != ChestType::Host && x.chest != ChestType::Flip)
         .count();
-    if raid == Raid::UBHL || raid == Raid::Xeno || (raid == Raid::PBHL && chest == ChestType::Host) {
+    if raid == Raid::UBHL || raid == Raid::Xeno || (raid == Raid::PBHL && chest == ChestType::Host)
+    {
         total_drops_of_item = settings
-                .droplog
-                .drop
-                .iter()
-                .filter(|x| x.raid == Raid::UBHL || x.raid == Raid::Xeno || x.raid == Raid::PBHL && x.chest != ChestType::Blue && x.chest != ChestType::None)
-                .count();
+            .droplog
+            .drop
+            .iter()
+            .filter(|x| {
+                x.raid == Raid::UBHL
+                    || x.raid == Raid::Xeno
+                    || x.raid == Raid::PBHL
+                        && x.chest != ChestType::Blue
+                        && x.chest != ChestType::None
+            })
+            .count();
     }
     let no_drop_count = settings
         .droplog
@@ -137,62 +160,191 @@ pub fn place_percentage_label(raid: Raid, item: Item, chest: ChestType, settings
         .iter()
         .filter(|x| x.item == Item::NoDrop && x.raid == raid)
         .count();
-        let label_text: String = match item {
-            Item::NoDrop => "No Drop: ".to_string(),
-            Item::HollowKey => "Hollow Key: ".to_string(),
-            Item::VerdantAzurite => "Verdant Azurite: ".to_string(),
-            Item::SilverCentrum => "Silver Centrum: ".to_string(),
-            Item::GoldBrick => "Gold Brick: ".to_string(),
-            Item::ChampionMerit => "Champion Merit: ".to_string(),
-            Item::SupremeMerit => "Supreme Merit: ".to_string(),
-            Item::LegendaryMerit => "Legendary Merit: ".to_string(),
-            Item::CoronationRing => "Coronation Ring: ".to_string(),
-            Item::LineageRing => "Lineage Ring: ".to_string(),
-            Item::IntricacyRing => "Intricacy Ring: ".to_string(),
-            Item::WeaponPlusMark1 => "Weapon Plus Mark 1: ".to_string(),
-            Item::WeaponPlusMark2 => "Weapon Plus Mark 2: ".to_string(),
-            Item::WeaponPlusMark3 => "Weapon Plus Mark 3: ".to_string(),
-            _ => "".to_string(),
-        };
-        let items_dropped = settings
-            .droplog
-            .drop
-            .iter()
-            .filter(|x| {
-                x.item == item && x.raid == raid && x.chest == chest
-            })
-            .count();
+    let label_text: String = match item {
+        Item::NoDrop => "No Drop: ".to_string(),
+        Item::HollowKey => "Hollow Key: ".to_string(),
+        Item::VerdantAzurite => "Verdant Azurite: ".to_string(),
+        Item::SilverCentrum => "Silver Centrum: ".to_string(),
+        Item::GoldBrick => "Gold Brick: ".to_string(),
+        Item::ChampionMerit => "Champion Merit: ".to_string(),
+        Item::SupremeMerit => "Supreme Merit: ".to_string(),
+        Item::LegendaryMerit => "Legendary Merit: ".to_string(),
+        Item::CoronationRing => "Coronation Ring: ".to_string(),
+        Item::LineageRing => "Lineage Ring: ".to_string(),
+        Item::IntricacyRing => "Intricacy Ring: ".to_string(),
+        Item::WeaponPlusMark1 => "Plus Mark +1: ".to_string(),
+        Item::WeaponPlusMark2 => "Plus Mark +2: ".to_string(),
+        Item::WeaponPlusMark3 => "Plus Mark +3: ".to_string(),
+    };
+    let items_dropped = settings
+        .droplog
+        .drop
+        .iter()
+        .filter(|x| x.item == item && x.raid == raid && x.chest == chest)
+        .count();
 
-        if settings.app_settings.droprate_by_kills {
-            let drop_percent_rate = format!(
-                " ({:.1$}%)",
-                ((items_dropped as f32 / total_drops_of_item as f32)
-                    * 100.)
-                    .to_string(),
-                3
-            );
-            ui.label(
-                label_text
-                    + &items_dropped.to_string()
-                    + &drop_percent_rate.to_string()
-            );
-        } else if !settings.app_settings.droprate_by_kills && chest != ChestType::None {
-            let drop_percent_rate = format!(
-                " ({:.1$}%)",
-                ((items_dropped as f32
-                    / (total_drops_of_item as f32 - no_drop_count as f32))
-                    * 100.)
-                    .to_string(),
-                3
-            );
-            ui.label(
-                label_text
-                    + &items_dropped.to_string()
-                    + &drop_percent_rate.to_string()
-            );
-        } else {
-            ui.label("No Drop: ".to_string() + &no_drop_count.to_string());
+    if settings.app_settings.droprate_by_kills {
+        let drop_percent_rate = format!(
+            " ({:.1$}%)",
+            ((items_dropped as f32 / total_drops_of_item as f32) * 100.).to_string(),
+            3
+        );
+        ui.label(label_text + &items_dropped.to_string() + &drop_percent_rate.to_string());
+    } else if !settings.app_settings.droprate_by_kills && chest != ChestType::None {
+        let drop_percent_rate = format!(
+            " ({:.1$}%)",
+            ((items_dropped as f32 / (total_drops_of_item as f32 - no_drop_count as f32)) * 100.)
+                .to_string(),
+            3
+        );
+        ui.label(label_text + &items_dropped.to_string() + &drop_percent_rate.to_string());
+    } else {
+        ui.label("No Drop: ".to_string() + &no_drop_count.to_string());
+    }
+}
+
+pub fn place_image_button_combo(
+    item: Item,
+    raid: Raid,
+    chest: ChestType,
+    settings: &mut AppSettings,
+    ui: &mut Ui,
+) {
+    let image_item_name = match item {
+        Item::NoDrop => "no_drop.png",
+        Item::HollowKey => "hollow_key.png",
+        Item::VerdantAzurite => "verdant_azurite.png",
+        Item::SilverCentrum => "silver_centrum.png",
+        Item::GoldBrick => "gold_brick.png",
+        Item::ChampionMerit => "champion_merit.png",
+        Item::SupremeMerit => "supreme_merit.png",
+        Item::LegendaryMerit => "legendary_merit.png",
+        Item::CoronationRing => "coronation_ring.png",
+        Item::LineageRing => "lineage_ring.png",
+        Item::IntricacyRing => "intricacy_ring.png",
+        Item::WeaponPlusMark1 => "weapon_plus_mark_1.png",
+        Item::WeaponPlusMark2 => "weapon_plus_mark_2.png",
+        Item::WeaponPlusMark3 => "weapon_plus_mark_3.png",
+    };
+    let label_text = match item {
+        Item::NoDrop => "No Drop",
+        Item::HollowKey => "Hollow Key",
+        Item::VerdantAzurite => "Verdant Azurite",
+        Item::SilverCentrum => "Silver Centrum",
+        Item::GoldBrick => "Gold Brick",
+        Item::ChampionMerit => "Champion Merit",
+        Item::SupremeMerit => "Supreme Merit",
+        Item::LegendaryMerit => "Legendary Merit",
+        Item::CoronationRing => "Coronation Ring",
+        Item::LineageRing => "Lineage Ring",
+        Item::IntricacyRing => "Intricacy Ring",
+        Item::WeaponPlusMark1 => "Plus Mark +1",
+        Item::WeaponPlusMark2 => "Plus Mark +2",
+        Item::WeaponPlusMark3 => "Plus Mark +3",
+    };
+    let item_image = match item {
+        Item::NoDrop => NO_BLUE_CHEST,
+        Item::HollowKey => HOLLOW_KEY,
+        Item::VerdantAzurite => VERDANT_AZURITE,
+        Item::SilverCentrum => SILVER_CENTRUM,
+        Item::GoldBrick => GOLD_BAR,
+        Item::ChampionMerit => C_MERIT,
+        Item::SupremeMerit => S_MERIT,
+        Item::LegendaryMerit => L_MERIT,
+        Item::CoronationRing => C_RING,
+        Item::LineageRing => L_RING,
+        Item::IntricacyRing => I_RING,
+        Item::WeaponPlusMark1 => P_MARK_1,
+        Item::WeaponPlusMark2 => P_MARK_2,
+        Item::WeaponPlusMark3 => P_MARK_3,
+    };
+    ui.spacing_mut().item_spacing.x = 3.;
+    let local_last_added_drop = &settings
+        .droplog
+        .drop
+        .iter()
+        .rposition(|x| x.item == item && x.raid == raid)
+        .unwrap_or_default();
+    if settings.app_settings.button_label_combo[1] {
+        if ui
+            .add(CustomImageButton::new(
+                &ui.ctx()
+                    .load_texture(image_item_name, load_image_from_memory(item_image).unwrap()),
+                (32., 32.),
+            ))
+            .clicked()
+        {
+            let shift = ui.input().modifiers.shift_only();
+            if shift {
+                if &settings
+                    .droplog
+                    .drop
+                    .iter()
+                    .filter(|x| x.item == item && x.raid == raid)
+                    .count()
+                    > &0
+                {
+                    let _ = settings.droplog.drop.remove(*local_last_added_drop);
+                }
+            } else if !shift {
+                let _ = settings.droplog.drop.push(ItemDrop::new(
+                    settings
+                        .droplog
+                        .drop
+                        .clone()
+                        .iter()
+                        .count()
+                        .try_into()
+                        .unwrap(),
+                    get_time(),
+                    raid,
+                    item,
+                    chest,
+                    Option::Some("None".to_string()),
+                ));
+            }
         }
+    }
+    if settings.app_settings.button_label_combo[0] {
+        if ui.button(label_text).clicked() {
+            let shift = ui.input().modifiers.shift_only();
+            if shift {
+                if &settings
+                    .droplog
+                    .drop
+                    .iter()
+                    .filter(|x| x.item == item && x.raid == raid)
+                    .count()
+                    > &0
+                {
+                    let _ = settings.droplog.drop.remove(*local_last_added_drop);
+                }
+            } else if !shift {
+                let _ = settings.droplog.drop.push(ItemDrop::new(
+                    settings
+                        .droplog
+                        .drop
+                        .clone()
+                        .iter()
+                        .count()
+                        .try_into()
+                        .unwrap(),
+                    get_time(),
+                    raid,
+                    item,
+                    chest,
+                    Option::Some("None".to_string()),
+                ));
+            }
+        }
+    }
+    let drop_count = settings
+        .droplog
+        .drop
+        .iter()
+        .filter(|x| x.item == item && x.raid == raid)
+        .count();
+    ui.label("x".to_string() + &drop_count.to_string());
 }
 
 #[cfg(target_family = "windows")]
@@ -278,7 +430,7 @@ pub enum UiTab {
     #[default]
     None,
 }
-#[derive(PartialEq, Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Copy, Clone, Default, Debug, Serialize, Deserialize)]
 pub enum Raid {
     Akasha,
     PBHL,
@@ -302,7 +454,7 @@ impl fmt::Display for Raid {
     }
 }
 
-#[derive(PartialEq, Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Copy, Clone, Default, Debug, Serialize, Deserialize)]
 pub enum ChestType {
     Host,
     Mvp,
@@ -324,7 +476,7 @@ impl fmt::Display for ChestType {
     }
 }
 
-#[derive(PartialEq, Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Copy, Clone, Default, Debug, Serialize, Deserialize)]
 pub enum Item {
     VerdantAzurite,
     HollowKey,
@@ -423,6 +575,9 @@ pub struct DorothyConfig {
     pub droprate_by_kills: bool,
     pub show_all_drops: bool,
     pub toggle_active_items: bool,
+    pub vertical_grid: bool,
+    pub grid_spacing_x: f32,
+    pub grid_spacing_y: f32,
     pub active_items: [bool; 32],
     pub button_label_combo: [bool; 2],
     pub crystals_amount: String,
@@ -445,6 +600,9 @@ impl Default for DorothyConfig {
             droprate_by_kills: false,
             show_all_drops: false,
             toggle_active_items: false,
+            vertical_grid: false,
+            grid_spacing_x: 10.,
+            grid_spacing_y: 20.,
             active_items: [true; 32],
             button_label_combo: [true; 2],
             current_ui_tab: UiTab::Akasha,
@@ -468,6 +626,9 @@ impl DorothyConfig {
             droprate_by_kills: false,
             show_all_drops: false,
             toggle_active_items: false,
+            vertical_grid: false,
+            grid_spacing_x: 10.,
+            grid_spacing_y: 20.,
             active_items: [true; 32],
             button_label_combo: [true; 2],
             current_ui_tab: UiTab::Akasha,
@@ -582,7 +743,7 @@ impl Widget for CustomImageButton {
 }
 
 #[cfg(target_arch = "wasm32")]
-use crate::{app::AppDorothy, AppSettings};
+use crate::{app::AppDorothy};
 #[cfg(target_arch = "wasm32")]
 use eframe::wasm_bindgen::{self, prelude::*};
 
@@ -592,6 +753,6 @@ pub fn start(canvas_id: &str) -> Result<(), eframe::wasm_bindgen::JsValue> {
     console_error_panic_hook::set_once();
     tracing_wasm::set_as_global_default();
 
-    let app = AppDorothy::new();
+    let app = AppDorothy::default();
     eframe::start_web(canvas_id, Box::new(app))
 }

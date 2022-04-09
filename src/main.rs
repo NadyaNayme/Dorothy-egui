@@ -5,12 +5,12 @@
 #![feature(derive_default_enum)]
 #![feature(drain_filter)]
 
-use dorothy::DOROTHY;
 #[cfg(not(target_arch = "wasm32"))]
-use dorothy::app::AppDorothy;
+use dorothy_egui::app::AppDorothy;
+use dorothy_egui::DOROTHY;
 use eframe::epi::IconData;
 
-fn main() -> Result<(), confy::ConfyError> {
+fn main() {
     let dorothy_icon: Vec<u8> = image::load_from_memory(DOROTHY)
         .unwrap()
         .into_rgba8()
@@ -21,7 +21,7 @@ fn main() -> Result<(), confy::ConfyError> {
         height: 32,
     };
 
-    let app = AppDorothy::new();
+    let app = AppDorothy::default();
     let native_options = eframe::NativeOptions {
         icon_data: Some(app_icon),
         ..Default::default()

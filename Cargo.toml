@@ -1,7 +1,7 @@
 [package]
-name = "dorothy"
-default-run = "dorothy-egui_bin"
-version = "0.0.9"
+name = "dorothy_egui"
+default-run = "dorothy_egui_bin"
+version = "0.0.10"
 authors = ["Nadya Nayme <admin@aishitei.ru>"]
 edition = "2021"
 rust-version = "1.56"
@@ -9,7 +9,7 @@ rust-version = "1.56"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [[bin]]
-name = "dorothy-egui_bin"
+name = "dorothy_egui_bin"
 path = "src/main.rs"
 
 [lib]
@@ -17,7 +17,6 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 chrono = "0.4"
-confy = "0.4.0"
 csv = "1.1"
 eframe = { path = "./crates/eframe/", features = ["persistence"]}
 epi = { path = "./crates/epi/" }
@@ -27,11 +26,15 @@ egui_extras = { path = "./crates/egui_extras/", features = ["image"] }
 image = { version = "0.24", features = ["png"] }
 serde = { version = "1.0", features = ["derive"] }
 
+[features]
+default = ["persistence"]
+persistence = ["eframe/persistence"]
+
 [target.'cfg(target_os = "windows")'.dependencies]
 open = "2.1"
 
-[target.'cfg(windows)'.build-dependencies]
-winres = "0.1"
+#[target.'cfg(windows)'.build-dependencies]
+#winres = "0.1"
 
 [profile.release]
 opt-level = 2 # fast and small wasm
