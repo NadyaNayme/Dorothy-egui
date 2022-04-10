@@ -32,7 +32,7 @@ default = ["persistence", "wasmbind"]
 persistence = ["eframe/persistence"]
 wasmbind = ["chrono/wasmbind"]
 
-[target.'cfg(target_os = "windows")'.dependencies.chrono]
+[target.'cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))'.dependencies.chrono]
 version = "0.4"
 default-features = true
 features = ["serde", "wasmbind"]

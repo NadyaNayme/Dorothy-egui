@@ -7,9 +7,9 @@ use eframe::egui::{widgets, Response, Sense, Ui, Widget, WidgetInfo, WidgetType}
 use eframe::epaint::{ColorImage, Rounding, TextureId, Vec2};
 use serde::{Deserialize, Serialize};
 
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
 use chrono::{DateTime, Local};
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
 use self_update::cargo_crate_version;
 #[cfg(target_arch = "wasm32")]
 use chrono::{DateTime, NaiveDateTime, Utc};

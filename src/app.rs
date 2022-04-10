@@ -42,25 +42,25 @@ impl epi::App for AppDorothy {
             *self = epi::get_value(storage, epi::APP_KEY).unwrap_or_default()
         }
 
-        // #[cfg(not(target_arch = "wasm32"))]
-        // let need_to_update = check_for_update().unwrap();
-        // match need_to_update {
-        //     ReleaseStatus::NewVersion => {
-        //         let update_worked = self_update();
-        //         match update_worked {
-        //             Ok(()) => {
-        //                 self.config.app_settings.auto_update_status = 1;
-        //             }
-        //             Err(e) => {
-        //                 println!("{}", e);
-        //                 self.config.app_settings.auto_update_status = 2;
-        //             }
-        //         }
-        //     }
-        //     ReleaseStatus::UpToDate => {
-        //         self.config.app_settings.auto_update_status = 3;
-        //     }
-        // }
+        #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
+        let need_to_update = check_for_update().unwrap();
+        match need_to_update {
+            ReleaseStatus::NewVersion => {
+                let update_worked = self_update();
+                match update_worked {
+                    Ok(()) => {
+                        self.config.app_settings.auto_update_status = 1;
+                    }
+                    Err(e) => {
+                        println!("{}", e);
+                        self.config.app_settings.auto_update_status = 2;
+                    }
+                }
+            }
+            ReleaseStatus::UpToDate => {
+                self.config.app_settings.auto_update_status = 3;
+            }
+        }
     }
 
     /// Called by the framework to save state before shutdown.
