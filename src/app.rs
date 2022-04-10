@@ -44,6 +44,7 @@ impl epi::App for AppDorothy {
 
         #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
         let need_to_update = check_for_update().unwrap();
+        #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
         match need_to_update {
             ReleaseStatus::NewVersion => {
                 let update_worked = self_update();
@@ -232,7 +233,10 @@ impl epi::App for AppDorothy {
                 });
                 ui.menu_button("Helpful Links", |ui| {
                     ui.style_mut().wrap = Some(false);
-                    ui.hyperlink_to("Latest Dorothy Release", "https://github.com/NadyaNayme/Dorothy-egui/releases/latest");
+                    ui.hyperlink_to(
+                        "Latest Dorothy Release",
+                        "https://github.com/NadyaNayme/Dorothy-egui/releases/latest",
+                    );
                     ui.add_space(3.);
                     ui.hyperlink_to("GBF Wiki", "https://gbf.wiki/Main_Page");
                     ui.add_space(3.);

@@ -9,13 +9,11 @@ use serde::{Deserialize, Serialize};
 
 #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
 use chrono::{DateTime, Local};
-#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
-use self_update::cargo_crate_version;
 #[cfg(target_arch = "wasm32")]
 use chrono::{DateTime, NaiveDateTime, Utc};
-use csv;
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
+use self_update::cargo_crate_version;
 use std::error::Error;
-use std::fmt::Display;
 use std::fs::{self, OpenOptions};
 use std::path::Path;
 use std::{f32::INFINITY, fmt};
@@ -65,7 +63,7 @@ pub fn get_time() -> String {
         Utc,
     );
     datetime.to_string()
- }
+}
 
 #[cfg(not(target_arch = "wasm32"))]
 pub enum ReleaseStatus {
