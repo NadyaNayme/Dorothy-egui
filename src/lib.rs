@@ -120,7 +120,7 @@ pub fn calculate_pulls(crystals: f32, tenners: f32, singles: f32) -> String {
     let crystal_single_pulls = (remaining_crystals_for_single_pulls / 300.0).floor();
     let total_pulls =
         (crystal_ten_pulls + crystal_single_pulls + (tenners * 10.0) + singles).to_string();
-    let total = String::from(total_pulls);
+    let total = total_pulls;
     let spark_percentage = get_percentage(total.parse::<f32>().unwrap(), 300.0);
     "Total: ".to_owned() + &total + " pulls (" + &spark_percentage + ")"
 }
@@ -206,7 +206,7 @@ pub fn place_total_header(
         Raid::None => "".to_string(),
     };
     ui.add_space(20.);
-    ui.heading(raid_heading.to_owned() + &total_drops_of_item.to_string());
+    ui.heading(raid_heading + &total_drops_of_item.to_string());
     ui.add_space(5.);
 }
 
@@ -268,7 +268,7 @@ pub fn place_percentage_label(
             && raid != Raid::Akasha
             && raid != Raid::GOHL
     {
-        label_text = format!("{} {} {}", raid, chest, ": ".to_string());
+        label_text = format!("{} {} {}", raid, chest, ": ");
     }
     let items_dropped = settings
         .droplog
@@ -286,7 +286,7 @@ pub fn place_percentage_label(
         if items_dropped == 0 {
             drop_percent_rate = "".to_string();
         }
-        ui.label(label_text + &items_dropped.to_string() + &drop_percent_rate.to_string());
+        ui.label(label_text + &items_dropped.to_string() + &drop_percent_rate);
     } else if !settings.app_settings.droprate_by_kills && chest != ChestType::None {
         use format_num::NumberFormat;
         let mut drop_percent_rate = format!(
@@ -296,7 +296,7 @@ pub fn place_percentage_label(
         if items_dropped == 0 {
             drop_percent_rate = "".to_string();
         }
-        ui.label(label_text + &items_dropped.to_string() + &drop_percent_rate.to_string());
+        ui.label(label_text + &items_dropped.to_string() + &drop_percent_rate);
     } else {
         ui.label("No Drop: ".to_string() + &no_drop_count.to_string());
     }
@@ -407,77 +407,68 @@ pub fn place_image_button_combo(
         .iter()
         .rposition(|x| x.item == item && x.raid == raid && x.chest == chest)
         .unwrap_or_default();
-    if settings.app_settings.button_label_combo[1] {
-        if ui
+    if settings.app_settings.button_label_combo[1] && ui
             .add(CustomImageButton::new(
                 &ui.ctx()
                     .load_texture(image_item_name, load_image_from_memory(item_image).unwrap()),
                 (32., 32.),
             ))
-            .clicked()
-        {
-            let shift = ui.input().modifiers.shift_only();
-            if shift {
-                if &settings
+            .clicked() {
+        let shift = ui.input().modifiers.shift_only();
+        if shift {
+            if settings
+                .droplog
+                .drop
+                .iter()
+                .filter(|x| x.item == item && x.raid == raid && x.chest == chest)
+                .count()
+                > 0
+            {
+                let _ = settings.droplog.drop.remove(*local_last_added_drop);
+            }
+        } else if !shift {
+            let _ = settings.droplog.drop.push(ItemDrop::new(
+                settings
                     .droplog
                     .drop
-                    .iter()
-                    .filter(|x| x.item == item && x.raid == raid && x.chest == chest)
-                    .count()
-                    > &0
-                {
-                    let _ = settings.droplog.drop.remove(*local_last_added_drop);
-                }
-            } else if !shift {
-                let _ = settings.droplog.drop.push(ItemDrop::new(
-                    settings
-                        .droplog
-                        .drop
-                        .clone()
-                        .iter()
-                        .count()
-                        .try_into()
-                        .unwrap(),
-                    get_time(),
-                    raid,
-                    item,
-                    chest,
-                    Some(format!("{}", honors)),
-                ));
-            }
+                    .clone().len()
+                    .try_into()
+                    .unwrap(),
+                get_time(),
+                raid,
+                item,
+                chest,
+                Some(format!("{}", honors)),
+            ));
         }
     }
-    if settings.app_settings.button_label_combo[0] {
-        if ui.button(label_text).clicked() {
-            let shift = ui.input().modifiers.shift_only();
-            if shift {
-                if &settings
+    if settings.app_settings.button_label_combo[0] && ui.button(label_text).clicked() {
+        let shift = ui.input().modifiers.shift_only();
+        if shift {
+            if settings
+                .droplog
+                .drop
+                .iter()
+                .filter(|x| x.item == item && x.raid == raid && x.chest == chest)
+                .count()
+                > 0
+            {
+                let _ = settings.droplog.drop.remove(*local_last_added_drop);
+            }
+        } else if !shift {
+            let _ = settings.droplog.drop.push(ItemDrop::new(
+                settings
                     .droplog
                     .drop
-                    .iter()
-                    .filter(|x| x.item == item && x.raid == raid && x.chest == chest)
-                    .count()
-                    > &0
-                {
-                    let _ = settings.droplog.drop.remove(*local_last_added_drop);
-                }
-            } else if !shift {
-                let _ = settings.droplog.drop.push(ItemDrop::new(
-                    settings
-                        .droplog
-                        .drop
-                        .clone()
-                        .iter()
-                        .count()
-                        .try_into()
-                        .unwrap(),
-                    get_time(),
-                    raid,
-                    item,
-                    chest,
-                    Some(format!("{}", honors)),
-                ));
-            }
+                    .clone().len()
+                    .try_into()
+                    .unwrap(),
+                get_time(),
+                raid,
+                item,
+                chest,
+                Some(format!("{}", honors)),
+            ));
         }
     }
     if settings.app_settings.active_items_2[26] {
@@ -499,7 +490,7 @@ pub fn create_path(path: &str) -> std::io::Result<()> {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn export(droplog: DropLog) -> Result<(), Box<dyn Error>> {
-    let logged_drops = droplog.drop.iter().count().to_string();
+    let logged_drops = droplog.drop.len().to_string();
     let export_time: DateTime<Local> = Local::now();
     let export_four_digit_year = export_time.format("%Y").to_string();
     let export_month = export_time.format("%m").to_string();

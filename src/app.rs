@@ -591,7 +591,7 @@ impl epi::App for AppDorothy {
                                     {
                                         let mut gold_brick_text_color =
                                             Color32::from_rgb(255, 221, 26);
-                                        if self.config.app_settings.dark_mode == false {
+                                        if !self.config.app_settings.dark_mode {
                                             gold_brick_text_color = Color32::from_rgb(187, 152, 10);
                                         }
                                         if ui
@@ -628,7 +628,7 @@ impl epi::App for AppDorothy {
                                     {
                                         let mut gold_brick_text_color =
                                             Color32::from_rgb(255, 221, 26);
-                                        if self.config.app_settings.dark_mode == false {
+                                        if !self.config.app_settings.dark_mode {
                                             gold_brick_text_color = Color32::from_rgb(183, 138, 15);
                                         }
                                         if ui
@@ -664,7 +664,7 @@ impl epi::App for AppDorothy {
                                     } else if drop.item == Item::GoldBrick {
                                         let mut gold_brick_text_color =
                                             Color32::from_rgb(255, 221, 26);
-                                        if self.config.app_settings.dark_mode == false {
+                                        if !self.config.app_settings.dark_mode {
                                             gold_brick_text_color = Color32::from_rgb(187, 152, 10);
                                         }
                                         if ui
@@ -765,7 +765,7 @@ impl epi::App for AppDorothy {
                                     {
                                         let mut gold_brick_text_color =
                                             Color32::from_rgb(255, 221, 26);
-                                        if self.config.app_settings.dark_mode == false {
+                                        if !self.config.app_settings.dark_mode {
                                             gold_brick_text_color = Color32::from_rgb(187, 152, 10);
                                         }
                                         if ui
@@ -802,7 +802,7 @@ impl epi::App for AppDorothy {
                                     {
                                         let mut gold_brick_text_color =
                                             Color32::from_rgb(255, 221, 26);
-                                        if self.config.app_settings.dark_mode == false {
+                                        if !self.config.app_settings.dark_mode {
                                             gold_brick_text_color = Color32::from_rgb(183, 138, 15);
                                         }
                                         if ui
@@ -838,7 +838,7 @@ impl epi::App for AppDorothy {
                                     } else if drop.item == Item::GoldBrick {
                                         let mut gold_brick_text_color =
                                             Color32::from_rgb(255, 221, 26);
-                                        if self.config.app_settings.dark_mode == false {
+                                        if !self.config.app_settings.dark_mode {
                                             gold_brick_text_color = Color32::from_rgb(187, 152, 10);
                                         }
                                         if ui
@@ -906,65 +906,50 @@ impl epi::App for AppDorothy {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
-                if self.config.app_settings.active_items_2[20] {
-                    if ui
+                if self.config.app_settings.active_items_2[20] && ui
                         .selectable_value(
                             &mut self.config.app_settings.current_ui_tab,
                             UiTab::Pulls,
                             "Pull Calculator",
                         )
-                        .changed()
-                    {
-                        frame.set_window_title("Dorothy - Pull Calculator");
-                    };
+                        .changed() {
+                    frame.set_window_title("Dorothy - Pull Calculator");
                 }
-                if self.config.app_settings.active_items_2[21] {
-                    if ui
+                if self.config.app_settings.active_items_2[21] && ui
                         .selectable_value(
                             &mut self.config.app_settings.current_ui_tab,
                             UiTab::Akasha,
                             "Akasha",
                         )
-                        .changed()
-                    {
-                        frame.set_window_title("Dorothy - Akasha");
-                    };
+                        .changed() {
+                    frame.set_window_title("Dorothy - Akasha");
                 }
-                if self.config.app_settings.active_items_2[22] {
-                    if ui
+                if self.config.app_settings.active_items_2[22] && ui
                         .selectable_value(
                             &mut self.config.app_settings.current_ui_tab,
                             UiTab::PBHL,
                             "PBHL",
                         )
-                        .changed()
-                    {
-                        frame.set_window_title("Dorothy - PBHL");
-                    };
+                        .changed() {
+                    frame.set_window_title("Dorothy - PBHL");
                 }
-                if self.config.app_settings.active_items_2[23] {
-                    if ui
+                if self.config.app_settings.active_items_2[23] && ui
                         .selectable_value(
                             &mut self.config.app_settings.current_ui_tab,
                             UiTab::GOHL,
                             "GOHL",
                         )
-                        .changed()
-                    {
-                        frame.set_window_title("Dorothy - GOHL");
-                    };
+                        .changed() {
+                    frame.set_window_title("Dorothy - GOHL");
                 }
-                if self.config.app_settings.active_items_2[24] {
-                    if ui
+                if self.config.app_settings.active_items_2[24] && ui
                         .selectable_value(
                             &mut self.config.app_settings.current_ui_tab,
                             UiTab::Hosts,
                             "Hosts",
                         )
-                        .changed()
-                    {
-                        frame.set_window_title("Dorothy - Hosts");
-                    };
+                        .changed() {
+                    frame.set_window_title("Dorothy - Hosts");
                 }
             });
 
