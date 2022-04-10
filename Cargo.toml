@@ -1,7 +1,7 @@
 [package]
 name = "dorothy_egui"
 default-run = "dorothy_egui_bin"
-version = "0.0.10"
+version = "0.0.12"
 authors = ["Nadya Nayme <admin@aishitei.ru>"]
 edition = "2021"
 rust-version = "1.56"
@@ -17,9 +17,9 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 csv = "1.1"
-eframe = { path = "./crates/eframe/", features = ["persistence"]}
-epi = { path = "./crates/epi/" }
-egui_extras = { path = "./crates/egui_extras/", features = ["image"] }
+eframe = { git = "https://github.com/NadyaNayme/egui/" }
+epi = { git = "https://github.com/NadyaNayme/egui/" }
+egui_extras = { git = "https://github.com/NadyaNayme/egui/" }
 # eframe = { version =  "0.17.0", features = ["persistence"] }
 # egui_extras = { version = "0.17", features = ["image"] }
 image = { version = "0.24", features = ["png"] }
@@ -32,16 +32,16 @@ default = ["persistence", "wasmbind"]
 persistence = ["eframe/persistence"]
 wasmbind = ["chrono/wasmbind"]
 
-[target.'cfg(target_os = "windows")'.dependencies]
-open = "2.1"
-
 [target.'cfg(target_os = "windows")'.dependencies.chrono]
 version = "0.4"
 default-features = true
 features = ["serde", "wasmbind"]
 
-#[target.'cfg(windows)'.build-dependencies]
-#winres = "0.1"
+[target.'cfg(any(target_family = "unix", target_family = "windows"))'.dependencies]
+self_update = "0.29"
+
+[target.'cfg(all(target_os = "windows", not(target_arch = "wasm32")))'.build-dependencies]
+winres = "0.1"
 
 [profile.release]
 opt-level = 2 # fast and small wasm
