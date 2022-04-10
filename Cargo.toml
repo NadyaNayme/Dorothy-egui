@@ -37,7 +37,7 @@ version = "0.4"
 default-features = true
 features = ["serde", "wasmbind"]
 
-[target.'cfg(any(target_family = "unix", target_family = "windows"))'.dependencies]
+[target.'cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))'.dependencies]
 self_update = "0.29"
 
 [target.'cfg(all(target_os = "windows", not(target_arch = "wasm32")))'.build-dependencies]
