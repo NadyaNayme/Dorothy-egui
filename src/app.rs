@@ -41,6 +41,26 @@ impl epi::App for AppDorothy {
         if let Some(storage) = _storage {
             *self = epi::get_value(storage, epi::APP_KEY).unwrap_or_default()
         }
+
+        // #[cfg(not(target_arch = "wasm32"))]
+        // let need_to_update = check_for_update().unwrap();
+        // match need_to_update {
+        //     ReleaseStatus::NewVersion => {
+        //         let update_worked = self_update();
+        //         match update_worked {
+        //             Ok(()) => {
+        //                 self.config.app_settings.auto_update_status = 1;
+        //             }
+        //             Err(e) => {
+        //                 println!("{}", e);
+        //                 self.config.app_settings.auto_update_status = 2;
+        //             }
+        //         }
+        //     }
+        //     ReleaseStatus::UpToDate => {
+        //         self.config.app_settings.auto_update_status = 3;
+        //     }
+        // }
     }
 
     /// Called by the framework to save state before shutdown.
@@ -63,6 +83,21 @@ impl epi::App for AppDorothy {
         } = self;
 
         let mut local_settings_copy = self.config.clone();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.config.app_settings.auto_update_status == 1 {
+            egui::Window::new("Updated!").show(ctx, |ui| {
+                    ui.heading("Please Restart!");
+                    ui.add_space(5.);
+                    ui.label("Dorothy has automatically updated to a new release. A restart is required. Please check the Github repo for what has changed.");
+                });
+        } else if self.config.app_settings.auto_update_status == 2 {
+            egui::Window::new("Update Failed...").show(ctx, |ui| {
+                    ui.heading("404: Dorothy's Brain Not Found");
+                    ui.add_space(5.);
+                    ui.label("Dorothy has failed to update. Please open an issue on Github for Nadya to investigate.");
+                });
+        }
 
         if self.config.app_settings.dark_mode {
             ctx.set_visuals(Visuals::dark());
@@ -146,6 +181,17 @@ impl epi::App for AppDorothy {
                 });
                 ui.menu_button("Settings", |ui| {
                     ui.style_mut().wrap = Some(false);
+                    #[cfg(not(target_arch = "wasm32"))]
+                    if ui
+                        .checkbox(
+                            &mut self.config.app_settings.auto_update_enabled,
+                            "Auto Update on Startup",
+                        )
+                        .clicked()
+                    {
+                        local_settings_copy.app_settings.auto_update_enabled =
+                            self.config.app_settings.auto_update_enabled;
+                    }
                     if ui
                         .checkbox(&mut self.config.app_settings.dark_mode, "Dark Mode")
                         .clicked()
@@ -184,29 +230,17 @@ impl epi::App for AppDorothy {
                             self.config.app_settings.droprate_by_kills;
                     }
                 });
-                #[cfg(not(target_arch = "wasm32"))]
                 ui.menu_button("Helpful Links", |ui| {
                     ui.style_mut().wrap = Some(false);
-                    if ui.button("Latest Dorothy Release (github.com)").clicked() {
-                        let url = "https://github.com/NadyaNayme/Dorothy-egui/releases/latest";
-                        let _ = open::that(&url).unwrap();
-                    }
-                    if ui.button("GBF Wiki (gbf.wiki)").clicked() {
-                        let url = "https://gbf.wiki/Main_Page";
-                        let _ = open::that(&url).unwrap();
-                    }
-                    if ui.button("Online Tools (granblue.party)").clicked() {
-                        let url = "https://www.granblue.party/";
-                        let _ = open::that(&url).unwrap();
-                    }
-                    if ui.button("Raidfinder (gbf.life)").clicked() {
-                        let url = "https://gbf.life/";
-                        let _ = open::that(&url).unwrap();
-                    }
-                    if ui.button("/r/Granblue_en (reddit.com)").clicked() {
-                        let url = "https://www.reddit.com/r/Granblue_en/";
-                        let _ = open::that(&url).unwrap();
-                    }
+                    ui.hyperlink_to("Latest Dorothy Release", "https://github.com/NadyaNayme/Dorothy-egui/releases/latest");
+                    ui.add_space(3.);
+                    ui.hyperlink_to("GBF Wiki", "https://gbf.wiki/Main_Page");
+                    ui.add_space(3.);
+                    ui.hyperlink_to("Online Tools", "https://www.granblue.party/");
+                    ui.add_space(3.);
+                    ui.hyperlink_to("Raidfinder", "https://gbf.life/");
+                    ui.add_space(3.);
+                    ui.hyperlink_to("/r/Granblue_en", "https://www.reddit.com/r/Granblue_en/");
                 });
             });
         });

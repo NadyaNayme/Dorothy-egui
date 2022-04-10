@@ -7,8 +7,10 @@ use eframe::egui::{widgets, Response, Sense, Ui, Widget, WidgetInfo, WidgetType}
 use eframe::epaint::{ColorImage, Rounding, TextureId, Vec2};
 use serde::{Deserialize, Serialize};
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(target_os = "windows")]
 use chrono::{DateTime, Local};
+#[cfg(target_os = "windows")]
+use self_update::cargo_crate_version;
 #[cfg(target_arch = "wasm32")]
 use chrono::{DateTime, NaiveDateTime, Utc};
 use csv;
@@ -63,6 +65,55 @@ pub fn get_time() -> String {
         Utc,
     );
     datetime.to_string()
+ }
+
+#[cfg(not(target_arch = "wasm32"))]
+pub enum ReleaseStatus {
+    NewVersion,
+    UpToDate,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn check_for_update() -> Result<ReleaseStatus, Box<dyn (::std::error::Error)>> {
+    let releases = self_update::backends::github::ReleaseList::configure()
+        .repo_owner("NadyaNayme")
+        .repo_name("Dorothy-egui")
+        .build()?
+        .fetch()?;
+
+    if releases.is_empty() {
+        return Ok(ReleaseStatus::UpToDate);
+    }
+
+    let latest_release = &releases[0];
+    let is_new =
+        self_update::version::bump_is_greater(cargo_crate_version!(), &latest_release.version)?;
+
+    if is_new {
+        Ok(ReleaseStatus::NewVersion)
+    } else {
+        Ok(ReleaseStatus::UpToDate)
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn self_update() -> Result<(), Box<dyn ::std::error::Error>> {
+    let _releases = self_update::backends::github::ReleaseList::configure()
+        .repo_owner("NadyaNayme")
+        .repo_name("Dorothy-egui")
+        .build()?
+        .fetch()?;
+
+    let _status = self_update::backends::github::Update::configure()
+        .repo_owner("NadyaNayme")
+        .repo_name("Dorothy-egui")
+        .bin_name("dorothy-egui_bin")
+        .show_download_progress(true)
+        .current_version(cargo_crate_version!())
+        .no_confirm(true)
+        .build()?
+        .update()?;
+    Ok(())
 }
 
 pub fn calculate_pulls(crystals: f32, tenners: f32, singles: f32) -> String {
@@ -139,6 +190,9 @@ pub fn place_total_header(
                 x.raid == Raid::UBHL
                     || x.raid == Raid::Xeno
                     || (x.raid == Raid::PBHL && x.chest == ChestType::Host)
+                    || x.raid == Raid::HLQL
+                    || x.raid == Raid::Huanglong
+                    || x.raid == Raid::Qilin
             })
             .count();
     }
@@ -209,6 +263,9 @@ pub fn place_percentage_label(
         Item::WeaponPlusMark3 => "+3 Weapon Mark: ".to_string(),
     };
     if (raid == Raid::PBHL && chest == ChestType::Host)
+        || raid == Raid::Huanglong
+        || raid == Raid::Qilin
+        || raid == Raid::HLQL
         || (raid == Raid::UBHL && chest == ChestType::Host || chest == ChestType::Flip)
             && raid != Raid::Akasha
             && raid != Raid::GOHL
@@ -672,6 +729,8 @@ pub struct DorothyConfig {
     pub show_all_drops: bool,
     pub toggle_active_items: bool,
     pub vertical_grid: bool,
+    pub auto_update_enabled: bool,
+    pub auto_update_status: u8,
     pub grid_spacing_x: f32,
     pub grid_spacing_y: f32,
     pub active_items: [bool; 32],
@@ -699,6 +758,8 @@ impl Default for DorothyConfig {
             show_all_drops: false,
             toggle_active_items: false,
             vertical_grid: false,
+            auto_update_enabled: true,
+            auto_update_status: 0,
             grid_spacing_x: 10.,
             grid_spacing_y: 20.,
             active_items: [true; 32],
@@ -727,6 +788,8 @@ impl DorothyConfig {
             show_all_drops: false,
             toggle_active_items: false,
             vertical_grid: false,
+            auto_update_enabled: true,
+            auto_update_status: 0,
             grid_spacing_x: 10.,
             grid_spacing_y: 20.,
             active_items: [true; 32],
