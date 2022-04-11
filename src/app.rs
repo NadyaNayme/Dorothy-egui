@@ -83,6 +83,11 @@ impl epi::App for AppDorothy {
             pbhl_honors: pbhlhonors,
         } = self;
 
+        if !ctx.is_using_pointer() {
+            // Hack: just scale the whole fucking UI because setting a font size is apparently fucking impossible
+            ctx.set_pixels_per_point(self.config.app_settings.font_size);
+        }
+
         let mut local_settings_copy = self.config.clone();
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -906,49 +911,59 @@ impl epi::App for AppDorothy {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
-                if self.config.app_settings.active_items_2[20] && ui
+                if self.config.app_settings.active_items_2[20]
+                    && ui
                         .selectable_value(
                             &mut self.config.app_settings.current_ui_tab,
                             UiTab::Pulls,
                             "Pull Calculator",
                         )
-                        .changed() {
+                        .changed()
+                {
                     frame.set_window_title("Dorothy - Pull Calculator");
                 }
-                if self.config.app_settings.active_items_2[21] && ui
+                if self.config.app_settings.active_items_2[21]
+                    && ui
                         .selectable_value(
                             &mut self.config.app_settings.current_ui_tab,
                             UiTab::Akasha,
                             "Akasha",
                         )
-                        .changed() {
+                        .changed()
+                {
                     frame.set_window_title("Dorothy - Akasha");
                 }
-                if self.config.app_settings.active_items_2[22] && ui
+                if self.config.app_settings.active_items_2[22]
+                    && ui
                         .selectable_value(
                             &mut self.config.app_settings.current_ui_tab,
                             UiTab::PBHL,
                             "PBHL",
                         )
-                        .changed() {
+                        .changed()
+                {
                     frame.set_window_title("Dorothy - PBHL");
                 }
-                if self.config.app_settings.active_items_2[23] && ui
+                if self.config.app_settings.active_items_2[23]
+                    && ui
                         .selectable_value(
                             &mut self.config.app_settings.current_ui_tab,
                             UiTab::GOHL,
                             "GOHL",
                         )
-                        .changed() {
+                        .changed()
+                {
                     frame.set_window_title("Dorothy - GOHL");
                 }
-                if self.config.app_settings.active_items_2[24] && ui
+                if self.config.app_settings.active_items_2[24]
+                    && ui
                         .selectable_value(
                             &mut self.config.app_settings.current_ui_tab,
                             UiTab::Hosts,
                             "Hosts",
                         )
-                        .changed() {
+                        .changed()
+                {
                     frame.set_window_title("Dorothy - Hosts");
                 }
             });
@@ -2110,6 +2125,8 @@ impl epi::App for AppDorothy {
         }
         if self.config.app_settings.toggle_active_items {
             egui::Window::new("Center Panel Features").open(&mut self.config.app_settings.toggle_active_items).vscroll(true).show(ctx, |ui| {
+                    ui.label("UI Scale.".to_string());
+                    ui.add(egui::Slider::new(&mut self.config.app_settings.font_size, 1.0..=1.75));
 
                     if ui
                         .checkbox(

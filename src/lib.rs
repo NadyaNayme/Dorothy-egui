@@ -152,7 +152,7 @@ pub fn load_image_from_memory(image_data: &[u8]) -> Result<ColorImage, image::Im
     Ok(ColorImage::from_rgba_unmultiplied(size, pixels.as_slice()))
 }
 
-pub fn load_icon(icon_bytes: &Vec<u8>) -> Option<epi::IconData> {
+pub fn load_icon(icon_bytes: &[u8]) -> Option<epi::IconData> {
     if let Ok(image) = image::load_from_memory(icon_bytes) {
         let image = image.to_rgba8();
         let (width, height) = image.dimensions();
@@ -407,13 +407,15 @@ pub fn place_image_button_combo(
         .iter()
         .rposition(|x| x.item == item && x.raid == raid && x.chest == chest)
         .unwrap_or_default();
-    if settings.app_settings.button_label_combo[1] && ui
+    if settings.app_settings.button_label_combo[1]
+        && ui
             .add(CustomImageButton::new(
                 &ui.ctx()
                     .load_texture(image_item_name, load_image_from_memory(item_image).unwrap()),
                 (32., 32.),
             ))
-            .clicked() {
+            .clicked()
+    {
         let shift = ui.input().modifiers.shift_only();
         if shift {
             if settings
@@ -428,12 +430,7 @@ pub fn place_image_button_combo(
             }
         } else if !shift {
             let _ = settings.droplog.drop.push(ItemDrop::new(
-                settings
-                    .droplog
-                    .drop
-                    .clone().len()
-                    .try_into()
-                    .unwrap(),
+                settings.droplog.drop.clone().len().try_into().unwrap(),
                 get_time(),
                 raid,
                 item,
@@ -457,12 +454,7 @@ pub fn place_image_button_combo(
             }
         } else if !shift {
             let _ = settings.droplog.drop.push(ItemDrop::new(
-                settings
-                    .droplog
-                    .drop
-                    .clone().len()
-                    .try_into()
-                    .unwrap(),
+                settings.droplog.drop.clone().len().try_into().unwrap(),
                 get_time(),
                 raid,
                 item,
@@ -722,6 +714,7 @@ pub struct DorothyConfig {
     pub auto_update_status: u8,
     pub grid_spacing_x: f32,
     pub grid_spacing_y: f32,
+    pub font_size: f32,
     pub active_items: [bool; 32],
     pub active_items_2: [bool; 32],
     pub button_label_combo: [bool; 2],
@@ -751,6 +744,7 @@ impl Default for DorothyConfig {
             auto_update_status: 0,
             grid_spacing_x: 10.,
             grid_spacing_y: 20.,
+            font_size: 14.,
             active_items: [true; 32],
             active_items_2: [true; 32],
             button_label_combo: [true; 2],
@@ -781,6 +775,7 @@ impl DorothyConfig {
             auto_update_status: 0,
             grid_spacing_x: 10.,
             grid_spacing_y: 20.,
+            font_size: 14.,
             active_items: [true; 32],
             active_items_2: [true; 32],
             button_label_combo: [true; 2],
