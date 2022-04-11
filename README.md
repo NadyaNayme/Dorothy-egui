@@ -1,5 +1,3 @@
-[![CI](https://github.com/NadyaNayme/Dorothy-egui/actions/workflows/rust.yml/badge.svg?branch=master)](https://github.com/NadyaNayme/Dorothy-egui/actions/workflows/rust.yml)
-
 # Dorothy
 A gold bar/blue box drop logger for Granblue Fantasy.
 
