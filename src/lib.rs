@@ -217,21 +217,24 @@ pub fn place_percentage_label(
     settings: &AppSettings,
     ui: &mut Ui,
 ) {
-    let mut total_drops_of_item = settings
+    let mut total_raid_drops = settings
         .droplog
         .drop
         .iter()
-        .filter(|x| x.raid == raid && x.chest != ChestType::Host && x.chest != ChestType::Flip)
+        .filter(|x| {
+                x.raid == raid
+                && x.chest != ChestType::Host
+                && x.chest != ChestType::Flip
+        })
         .count();
-    if raid != Raid::Akasha && raid != Raid::GOHL
-        || (raid == Raid::PBHL && chest == ChestType::Host)
+    if chest == ChestType::Host
     {
-        total_drops_of_item = settings
+        total_raid_drops = settings
             .droplog
             .drop
             .iter()
             .filter(|x| {
-                x.raid != Raid::Akasha && x.raid != Raid::GOHL
+                    x.raid == raid
                     || (x.raid == Raid::PBHL
                         && x.chest != ChestType::Blue
                         && x.chest != ChestType::None)
@@ -281,7 +284,7 @@ pub fn place_percentage_label(
         use format_num::NumberFormat;
         let mut drop_percent_rate = format!(
             " ({})",
-            NumberFormat::new().format(".2%", items_dropped as f32 / total_drops_of_item as f32)
+            NumberFormat::new().format(".2%", items_dropped as f32 / total_raid_drops as f32)
         );
         if items_dropped == 0 {
             drop_percent_rate = "".to_string();
@@ -291,7 +294,7 @@ pub fn place_percentage_label(
         use format_num::NumberFormat;
         let mut drop_percent_rate = format!(
             " ({})",
-            NumberFormat::new().format(".2%", items_dropped as f32 / total_drops_of_item as f32)
+            NumberFormat::new().format(".2%", items_dropped as f32 / (total_raid_drops as f32 - no_drop_count as f32))
         );
         if items_dropped == 0 {
             drop_percent_rate = "".to_string();
@@ -714,7 +717,8 @@ pub struct DorothyConfig {
     pub auto_update_status: u8,
     pub grid_spacing_x: f32,
     pub grid_spacing_y: f32,
-    pub font_size: f32,
+    pub ui_scale: f32,
+    pub body_font_size: f32,
     pub active_items: [bool; 32],
     pub active_items_2: [bool; 32],
     pub button_label_combo: [bool; 2],
@@ -744,7 +748,8 @@ impl Default for DorothyConfig {
             auto_update_status: 0,
             grid_spacing_x: 10.,
             grid_spacing_y: 20.,
-            font_size: 14.,
+            ui_scale: 1.,
+            body_font_size: 16.,
             active_items: [true; 32],
             active_items_2: [true; 32],
             button_label_combo: [true; 2],
@@ -775,7 +780,8 @@ impl DorothyConfig {
             auto_update_status: 0,
             grid_spacing_x: 10.,
             grid_spacing_y: 20.,
-            font_size: 14.,
+            ui_scale: 1.,
+            body_font_size: 16.,
             active_items: [true; 32],
             active_items_2: [true; 32],
             button_label_combo: [true; 2],

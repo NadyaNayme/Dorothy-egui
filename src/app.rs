@@ -1,3 +1,5 @@
+use std::borrow::Borrow;
+
 use crate::*;
 use eframe::{
     egui::{self, RichText, Visuals},
@@ -84,11 +86,20 @@ impl epi::App for AppDorothy {
         } = self;
 
         if !ctx.is_using_pointer() {
-            // Hack: just scale the whole fucking UI because setting a font size is apparently fucking impossible
-            ctx.set_pixels_per_point(self.config.app_settings.font_size);
+            ctx.set_pixels_per_point(self.config.app_settings.ui_scale);
+            let mut style = (*ctx.style()).clone();
+            let header_font_size = self.config.app_settings.body_font_size * 1.3;
+            let small_font_size = self.config.app_settings.body_font_size * 0.8;
+            style.text_styles = [
+                    (crate::app::egui::TextStyle::Heading, crate::app::egui::FontId::new(header_font_size, crate::app::egui::FontFamily::Proportional)),
+                    (crate::app::egui::TextStyle::Body, crate::app::egui::FontId::new(self.config.app_settings.body_font_size, crate::app::egui::FontFamily::Proportional)),
+                    (crate::app::egui::TextStyle::Monospace, crate::app::egui::FontId::new(self.config.app_settings.body_font_size, crate::app::egui::FontFamily::Proportional)),
+                    (crate::app::egui::TextStyle::Button, crate::app::egui::FontId::new(self.config.app_settings.body_font_size, crate::app::egui::FontFamily::Proportional)),
+                    (crate::app::egui::TextStyle::Small, crate::app::egui::FontId::new(small_font_size, crate::app::egui::FontFamily::Proportional)),
+                ]
+                .into();
+                ctx.set_style(style);
         }
-
-        let mut local_settings_copy = self.config.clone();
 
         #[cfg(not(target_arch = "wasm32"))]
         if self.config.app_settings.auto_update_status == 1 {
@@ -134,107 +145,46 @@ impl epi::App for AppDorothy {
                 });
                 ui.menu_button("View", |ui| {
                     ui.style_mut().wrap = Some(false);
-                    if ui
-                        .checkbox(
-                            &mut self.config.app_settings.left_panel_visible,
-                            "Show Left Panel",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.left_panel_visible =
-                            self.config.app_settings.left_panel_visible;
-                    }
-                    if ui
-                        .checkbox(
-                            &mut self.config.app_settings.right_panel_visible,
-                            "Show Right/Bottom Panel",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.right_panel_visible =
-                            self.config.app_settings.right_panel_visible;
-                    }
-                    if ui
-                        .checkbox(
-                            &mut self.config.app_settings.move_right_to_bottom,
-                            "Move Right Panel to Bottom",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.move_right_to_bottom =
-                            self.config.app_settings.move_right_to_bottom;
-                    }
-                    if ui
-                        .checkbox(
-                            &mut self.config.app_settings.toggle_active_items,
-                            "Adjust Center Panel Features",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.toggle_active_items =
-                            self.config.app_settings.toggle_active_items;
-                    }
-                    if ui
-                        .checkbox(
-                            &mut self.config.app_settings.show_all_drops,
-                            "Show All Drop Totals",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.show_all_drops =
-                            self.config.app_settings.show_all_drops;
-                    }
+                    ui.checkbox(
+                        &mut self.config.app_settings.left_panel_visible,
+                        "Show Left Panel",
+                    );
+                    ui.checkbox(
+                        &mut self.config.app_settings.right_panel_visible,
+                        "Show Right/Bottom Panel",
+                    );
+                    ui.checkbox(
+                        &mut self.config.app_settings.move_right_to_bottom,
+                        "Move Right Panel to Bottom",
+                    );
+                    ui.checkbox(
+                        &mut self.config.app_settings.toggle_active_items,
+                        "Adjust Center Panel Features",
+                    );
+                    ui.checkbox(
+                        &mut self.config.app_settings.show_all_drops,
+                        "Show All Drop Totals",
+                    );
                 });
                 ui.menu_button("Settings", |ui| {
                     ui.style_mut().wrap = Some(false);
                     #[cfg(not(target_arch = "wasm32"))]
-                    if ui
-                        .checkbox(
-                            &mut self.config.app_settings.auto_update_enabled,
-                            "Auto Update on Startup",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.auto_update_enabled =
-                            self.config.app_settings.auto_update_enabled;
-                    }
-                    if ui
-                        .checkbox(&mut self.config.app_settings.dark_mode, "Dark Mode")
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.dark_mode =
-                            self.config.app_settings.dark_mode;
-                    }
+                    ui.checkbox(
+                        &mut self.config.app_settings.auto_update_enabled,
+                        "Auto Update on Startup",
+                    );
+                    ui.checkbox(&mut self.config.app_settings.dark_mode, "Dark Mode");
                     #[cfg(not(target_arch = "wasm32"))]
-                    if ui
-                        .checkbox(&mut self.config.app_settings.always_on_top, "Always On Top")
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.always_on_top =
-                            self.config.app_settings.always_on_top;
-                        frame.set_always_on_top(local_settings_copy.app_settings.always_on_top);
-                    }
+                    ui.checkbox(&mut self.config.app_settings.always_on_top, "Always On Top");
                     #[cfg(not(target_arch = "wasm32"))]
-                    if ui
-                        .checkbox(
-                            &mut self.config.app_settings.reset_on_export,
-                            "Reset Counts on Export",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.reset_on_export =
-                            self.config.app_settings.reset_on_export;
-                    }
-                    if ui
-                        .checkbox(
-                            &mut self.config.app_settings.droprate_by_kills,
-                            "Calculate droprates by total kills",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.droprate_by_kills =
-                            self.config.app_settings.droprate_by_kills;
-                    }
+                    ui.checkbox(
+                        &mut self.config.app_settings.reset_on_export,
+                        "Reset Counts on Export",
+                    );
+                    ui.checkbox(
+                        &mut self.config.app_settings.droprate_by_kills,
+                        "Calculate droprates by total kills",
+                    );
                 });
                 ui.menu_button("Helpful Links", |ui| {
                     ui.style_mut().wrap = Some(false);
@@ -275,98 +225,98 @@ impl epi::App for AppDorothy {
                                     Raid::Akasha,
                                     Item::NoDrop,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::Akasha,
                                     Item::NoDrop,
                                     ChestType::None,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::Akasha,
                                     Item::HollowKey,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::Akasha,
                                     Item::SilverCentrum,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::Akasha,
                                     Item::GoldBrick,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::Akasha,
                                     Item::CoronationRing,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::Akasha,
                                     Item::LineageRing,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::Akasha,
                                     Item::IntricacyRing,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::Akasha,
                                     Item::ChampionMerit,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::Akasha,
                                     Item::SupremeMerit,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::Akasha,
                                     Item::LegendaryMerit,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::Akasha,
                                     Item::WeaponPlusMark1,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::Akasha,
                                     Item::WeaponPlusMark2,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::Akasha,
                                     Item::WeaponPlusMark3,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                             }
@@ -377,42 +327,42 @@ impl epi::App for AppDorothy {
                                     Raid::PBHL,
                                     Item::NoDrop,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::PBHL,
                                     Item::NoDrop,
                                     ChestType::None,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::PBHL,
                                     Item::GoldBrick,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::PBHL,
                                     Item::CoronationRing,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::PBHL,
                                     Item::LineageRing,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::PBHL,
                                     Item::IntricacyRing,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                             }
@@ -423,77 +373,77 @@ impl epi::App for AppDorothy {
                                     Raid::GOHL,
                                     Item::NoDrop,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::GOHL,
                                     Item::NoDrop,
                                     ChestType::None,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::GOHL,
                                     Item::VerdantAzurite,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::GOHL,
                                     Item::SilverCentrum,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::GOHL,
                                     Item::GoldBrick,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::GOHL,
                                     Item::CoronationRing,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::GOHL,
                                     Item::LineageRing,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::GOHL,
                                     Item::IntricacyRing,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::GOHL,
                                     Item::ChampionMerit,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::GOHL,
                                     Item::SupremeMerit,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::GOHL,
                                     Item::LegendaryMerit,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                             }
@@ -505,56 +455,56 @@ impl epi::App for AppDorothy {
                                     Raid::UBHL,
                                     Item::NoDrop,
                                     ChestType::Blue,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::UBHL,
                                     Item::GoldBrick,
                                     ChestType::Host,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::UBHL,
                                     Item::GoldBrick,
                                     ChestType::Flip,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::PBHL,
                                     Item::GoldBrick,
                                     ChestType::Host,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::Xeno,
                                     Item::GoldBrick,
                                     ChestType::Flip,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::Huanglong,
                                     Item::GoldBrick,
                                     ChestType::Host,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::Qilin,
                                     Item::GoldBrick,
                                     ChestType::Host,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                                 place_percentage_label(
                                     Raid::HLQL,
                                     Item::GoldBrick,
                                     ChestType::Host,
-                                    &local_settings_copy,
+                                    &self.config,
                                     ui,
                                 );
                             }
@@ -579,7 +529,8 @@ impl epi::App for AppDorothy {
                         .max_height(INFINITY)
                         .max_width(INFINITY)
                         .show(ui, |ui| {
-                            for drop in local_settings_copy
+                            for drop in self
+                                .config
                                 .droplog
                                 .drop
                                 .clone()
@@ -621,10 +572,6 @@ impl epi::App for AppDorothy {
                                                 .droplog
                                                 .drop
                                                 .retain(|x| x.drop_id != drop.drop_id);
-                                            let _ = local_settings_copy
-                                                .droplog
-                                                .drop
-                                                .retain(|x| x.drop_id != drop.drop_id);
                                         }
                                         ui.add_space(3.)
                                     } else if drop.item == Item::GoldBrick
@@ -660,10 +607,6 @@ impl epi::App for AppDorothy {
                                                 .droplog
                                                 .drop
                                                 .retain(|x| x.drop_id != drop.drop_id);
-                                            let _ = local_settings_copy
-                                                .droplog
-                                                .drop
-                                                .retain(|x| x.drop_id != drop.drop_id);
                                         }
                                         ui.add_space(3.)
                                     } else if drop.item == Item::GoldBrick {
@@ -694,10 +637,6 @@ impl epi::App for AppDorothy {
                                                 .droplog
                                                 .drop
                                                 .retain(|x| x.drop_id != drop.drop_id);
-                                            let _ = local_settings_copy
-                                                .droplog
-                                                .drop
-                                                .retain(|x| x.drop_id != drop.drop_id);
                                         }
                                         ui.add_space(3.)
                                     } else {
@@ -719,10 +658,6 @@ impl epi::App for AppDorothy {
                                         {
                                             let _ = self
                                                 .config
-                                                .droplog
-                                                .drop
-                                                .retain(|x| x.drop_id != drop.drop_id);
-                                            let _ = local_settings_copy
                                                 .droplog
                                                 .drop
                                                 .retain(|x| x.drop_id != drop.drop_id);
@@ -753,7 +688,8 @@ impl epi::App for AppDorothy {
                         .max_height(INFINITY)
                         .max_width(INFINITY)
                         .show(ui, |ui| {
-                            for drop in local_settings_copy
+                            for drop in self
+                                .config
                                 .droplog
                                 .drop
                                 .clone()
@@ -795,10 +731,6 @@ impl epi::App for AppDorothy {
                                                 .droplog
                                                 .drop
                                                 .retain(|x| x.drop_id != drop.drop_id);
-                                            let _ = local_settings_copy
-                                                .droplog
-                                                .drop
-                                                .retain(|x| x.drop_id != drop.drop_id);
                                         }
                                         ui.add_space(3.)
                                     } else if drop.item == Item::GoldBrick
@@ -834,10 +766,6 @@ impl epi::App for AppDorothy {
                                                 .droplog
                                                 .drop
                                                 .retain(|x| x.drop_id != drop.drop_id);
-                                            let _ = local_settings_copy
-                                                .droplog
-                                                .drop
-                                                .retain(|x| x.drop_id != drop.drop_id);
                                         }
                                         ui.add_space(3.)
                                     } else if drop.item == Item::GoldBrick {
@@ -868,10 +796,6 @@ impl epi::App for AppDorothy {
                                                 .droplog
                                                 .drop
                                                 .retain(|x| x.drop_id != drop.drop_id);
-                                            let _ = local_settings_copy
-                                                .droplog
-                                                .drop
-                                                .retain(|x| x.drop_id != drop.drop_id);
                                         }
                                         ui.add_space(3.)
                                     } else {
@@ -893,10 +817,6 @@ impl epi::App for AppDorothy {
                                         {
                                             let _ = self
                                                 .config
-                                                .droplog
-                                                .drop
-                                                .retain(|x| x.drop_id != drop.drop_id);
-                                            let _ = local_settings_copy
                                                 .droplog
                                                 .drop
                                                 .retain(|x| x.drop_id != drop.drop_id);
@@ -1064,180 +984,27 @@ impl epi::App for AppDorothy {
                             .show(ui, |ui| {
                                 ui.style_mut().wrap = Some(false);
                                 if !self.config.app_settings.vertical_grid {
-                                    if self.config.app_settings.active_items[0] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::NoDrop,
-                                                Raid::Akasha,
-                                                ChestType::None,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[1] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::HollowKey,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[2] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::SilverCentrum,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[3] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::GoldBrick,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[0]
-                                        || self.config.app_settings.active_items[1]
-                                        || self.config.app_settings.active_items[2]
-                                        || self.config.app_settings.active_items[3]
-                                    {
-                                        ui.end_row();
-                                    }
-                                    if self.config.app_settings.active_items[4] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::CoronationRing,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[5] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::ChampionMerit,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[6] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::WeaponPlusMark1,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[4]
-                                        || self.config.app_settings.active_items[5]
-                                        || self.config.app_settings.active_items[6]
-                                    {
-                                        ui.end_row();
-                                    }
-                                    if self.config.app_settings.active_items[7] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::LineageRing,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[8] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::SupremeMerit,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[9] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::WeaponPlusMark2,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[7]
-                                        || self.config.app_settings.active_items[8]
-                                        || self.config.app_settings.active_items[9]
-                                    {
-                                        ui.end_row();
-                                    }
-                                    if self.config.app_settings.active_items[10] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::IntricacyRing,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[11] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::LegendaryMerit,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[12] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::WeaponPlusMark3,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
+                                    let akasha_drops = vec![Item::NoDrop, Item::HollowKey, Item::SilverCentrum, Item::GoldBrick, Item::CoronationRing, Item::ChampionMerit, Item::WeaponPlusMark1, Item::LineageRing, Item::SupremeMerit, Item::WeaponPlusMark2, Item::IntricacyRing, Item::LegendaryMerit, Item::WeaponPlusMark3];
+                                    for (pos, drop) in akasha_drops.iter().enumerate() {
+                                        let chest = match drop {
+                                            Item::NoDrop => ChestType::None,
+                                            _ => ChestType::Blue,
+                                        };
+                                        if self.config.app_settings.active_items[pos] {
+                                            ui.horizontal(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    Raid::Akasha,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                        if pos == 3 || pos == 6 || pos == 9 {
+                                            ui.end_row();
+                                        }
                                     }
                                 } else {
                                     if self.config.app_settings.active_items[0] {
@@ -2105,526 +1872,257 @@ impl epi::App for AppDorothy {
                     "Oh you've really screwed up now haven't you? Turn one of these back on to log your drops."
                         .to_string(),
                 );
-                if ui
+                ui
                     .checkbox(
                         &mut self.config.app_settings.button_label_combo[0],
                         "Show buttons",
-                    )
-                    .clicked(){}
-                if ui
+                    );
+                ui
                     .checkbox(
                         &mut self.config.app_settings.button_label_combo[1],
                         "Show icons",
-                    )
-                    .clicked()
-                {
-                    local_settings_copy.app_settings.button_label_combo[1] =
-                        self.config.app_settings.button_label_combo[1];
-                }
+                    );
             });
         }
         if self.config.app_settings.toggle_active_items {
             egui::Window::new("Center Panel Features").open(&mut self.config.app_settings.toggle_active_items).vscroll(true).show(ctx, |ui| {
                     ui.label("UI Scale.".to_string());
-                    ui.add(egui::Slider::new(&mut self.config.app_settings.font_size, 1.0..=1.75));
+                    ui.add(egui::Slider::new(&mut self.config.app_settings.ui_scale, 1.0..=1.75));
+                    ui.label("Font Size.".to_string());
+                    ui.add(egui::Slider::new(&mut self.config.app_settings.body_font_size, 12.0..=40.0));
 
-                    if ui
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items_2[20],
                             "Show Pull Calculator Tab",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items_2[20] =
-                            self.config.app_settings.active_items_2[20];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items_2[21],
                             "Show Akasha Tab",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items_2[21] =
-                            self.config.app_settings.active_items_2[21];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items_2[22],
                             "Show PBHL Tab",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items_2[22] =
-                            self.config.app_settings.active_items_2[22];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items_2[23],
                             "Show GOHL Tab",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items_2[23] =
-                            self.config.app_settings.active_items_2[23];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items_2[24],
                             "Show Hosts Tab",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items_2[24] =
-                            self.config.app_settings.active_items_2[24];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.button_label_combo[0],
                             "Show buttons",
-                        )
-                        .clicked(){}
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.button_label_combo[1],
                             "Show icons",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.button_label_combo[1] =
-                            self.config.app_settings.button_label_combo[1];
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items_2[26],
                             "Show item counts",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items_2[26] =
-                            self.config.app_settings.active_items_2[26];
-
-                    }
-                if ui
+                        );
+                ui
                     .checkbox(
                         &mut self.config.app_settings.vertical_grid,
                         "Change item count placement to below icons/buttons",
-                    )
-                    .clicked()
-                {
-                    local_settings_copy.app_settings.vertical_grid =
-                        self.config.app_settings.vertical_grid;
-                }
+                    );
                 ui.add_space(5.);
                 ui.label("Grid X Spacing.".to_string());
-                if ui.add(egui::Slider::new(&mut self.config.app_settings.grid_spacing_x, 0.0..=50.0)).changed() {
-                    local_settings_copy.app_settings.grid_spacing_x =
-                        self.config.app_settings.grid_spacing_x;
-
-                }
+                ui.add(egui::Slider::new(&mut self.config.app_settings.grid_spacing_x, 0.0..=50.0));
                 ui.add_space(5.);
                 ui.label("Grid Y Spacing.".to_string());
-                if ui.add(egui::Slider::new(&mut self.config.app_settings.grid_spacing_y, 0.0..=50.0)).changed() {
-                    local_settings_copy.app_settings.grid_spacing_y =
-                            self.config.app_settings.grid_spacing_y;
-
-                }
+                ui.add(egui::Slider::new(&mut self.config.app_settings.grid_spacing_y, 0.0..=50.0));
                 ui.add_space(5.);
                 ui.label("The grid isn't smart enough to adjust but you can toggle specific items off here.".to_string());
                 ui.heading("Akasha");
-                    if ui
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[0],
                             "Show No Blue Box",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[0] =
-                            self.config.app_settings.active_items[0];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[1],
                             "Show Hollow Key",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[1] =
-                            self.config.app_settings.active_items[1];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[2],
                             "Show Silver Centrum",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[2] =
-                            self.config.app_settings.active_items[2];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[3],
                             "Show Gold Bar",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[3] =
-                            self.config.app_settings.active_items[3];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[4],
                             "Show Coronation Ring",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[4] =
-                            self.config.app_settings.active_items[4];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[7],
                             "Show Lineage Ring",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[7] =
-                            self.config.app_settings.active_items[7];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[10],
                             "Show Intricacy Ring",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[10] =
-                            self.config.app_settings.active_items[10];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[5],
                             "Show Champion Merit",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[5] =
-                            self.config.app_settings.active_items[5];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[8],
                             "Show Supreme Merit",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[8] =
-                            self.config.app_settings.active_items[8];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[11],
                             "Show Legendary Merit",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[11] =
-                            self.config.app_settings.active_items[11];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[6],
                             "Show +1 Mark",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[6] =
-                            self.config.app_settings.active_items[6];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[9],
                             "Show +2 Mark",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[9] =
-                            self.config.app_settings.active_items[9];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[12],
                             "Show +3 Mark",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[12] =
-                            self.config.app_settings.active_items[12];
-
-                    }
+                        );
                 ui.heading("PBHL");
-                    if ui
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[13],
                             "Show No Blue Box",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[13] =
-                            self.config.app_settings.active_items[13];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[14],
                             "Show Gold Bar",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[14] =
-                            self.config.app_settings.active_items[14];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[15],
                             "Show Coronation Ring",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[15] =
-                            self.config.app_settings.active_items[15];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[16],
                             "Show Lineage Ring",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[16] =
-                            self.config.app_settings.active_items[16];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[17],
                             "Show Lineage Ring",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[17] =
-                            self.config.app_settings.active_items[17];
-
-                    }
+                        );
                 ui.heading("GOHL");
-                    if ui
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[18],
                             "Show No Blue Box",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[18] =
-                            self.config.app_settings.active_items[18];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[19],
                             "Show Verdant Azurite",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[19] =
-                            self.config.app_settings.active_items[19];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[20],
                             "Show Silver Centrum",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[20] =
-                            self.config.app_settings.active_items[20];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[21],
                             "Show Gold Bar",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[21] =
-                            self.config.app_settings.active_items[21];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[22],
                             "Show Coronation Ring",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[22] =
-                            self.config.app_settings.active_items[22];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[24],
                             "Show Lineage Ring",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[24] =
-                            self.config.app_settings.active_items[24];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[26],
                             "Show Intricacy Ring",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[26] =
-                            self.config.app_settings.active_items[26];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[23],
                             "Show Champion Merit",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[23] =
-                            self.config.app_settings.active_items[23];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[25],
                             "Show Supreme Merit",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[25] =
-                            self.config.app_settings.active_items[25];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[27],
                             "Show Legendary Merit",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[27] =
-                            self.config.app_settings.active_items[27];
-
-                    }
+                        );
                 ui.heading("Hosts");
-                    if ui
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[28],
                             "Show UBHL Host Gold Bar",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[28] =
-                            self.config.app_settings.active_items[28];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[29],
                             "Show UBHL Flip Gold Bar",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[29] =
-                            self.config.app_settings.active_items[29];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[30],
                             "Show PBHL Host Gold Bar",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[30] =
-                            self.config.app_settings.active_items[30];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items[31],
                             "Show Xeno Gold Bar",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items[31] =
-                            self.config.app_settings.active_items[31];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items_2[0],
                             "Show Huanglong Gold Bar",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items_2[0] =
-                            self.config.app_settings.active_items_2[0];
-
-                    }
-                    if ui
+                        );
+                    ui
                         .checkbox(
                             &mut self.config.app_settings.active_items_2[1],
                             "Show Qilin Gold Bar",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items_2[1] =
-                            self.config.app_settings.active_items_2[1];
-
-                    }
-                    if ui
+                        );
+                        ui
                         .checkbox(
                             &mut self.config.app_settings.active_items_2[2],
                             "Show HLQL Gold Bar",
-                        )
-                        .clicked()
-                    {
-                        local_settings_copy.app_settings.active_items_2[2] =
-                            self.config.app_settings.active_items_2[2];
-
-                    }
+                        );
 
             });
         }
