@@ -1,5 +1,3 @@
-use std::borrow::Borrow;
-
 use crate::*;
 use eframe::{
     egui::{self, RichText, Visuals},
@@ -91,14 +89,44 @@ impl epi::App for AppDorothy {
             let header_font_size = self.config.app_settings.body_font_size * 1.3;
             let small_font_size = self.config.app_settings.body_font_size * 0.8;
             style.text_styles = [
-                    (crate::app::egui::TextStyle::Heading, crate::app::egui::FontId::new(header_font_size, crate::app::egui::FontFamily::Proportional)),
-                    (crate::app::egui::TextStyle::Body, crate::app::egui::FontId::new(self.config.app_settings.body_font_size, crate::app::egui::FontFamily::Proportional)),
-                    (crate::app::egui::TextStyle::Monospace, crate::app::egui::FontId::new(self.config.app_settings.body_font_size, crate::app::egui::FontFamily::Proportional)),
-                    (crate::app::egui::TextStyle::Button, crate::app::egui::FontId::new(self.config.app_settings.body_font_size, crate::app::egui::FontFamily::Proportional)),
-                    (crate::app::egui::TextStyle::Small, crate::app::egui::FontId::new(small_font_size, crate::app::egui::FontFamily::Proportional)),
-                ]
-                .into();
-                ctx.set_style(style);
+                (
+                    crate::app::egui::TextStyle::Heading,
+                    crate::app::egui::FontId::new(
+                        header_font_size,
+                        crate::app::egui::FontFamily::Proportional,
+                    ),
+                ),
+                (
+                    crate::app::egui::TextStyle::Body,
+                    crate::app::egui::FontId::new(
+                        self.config.app_settings.body_font_size,
+                        crate::app::egui::FontFamily::Proportional,
+                    ),
+                ),
+                (
+                    crate::app::egui::TextStyle::Monospace,
+                    crate::app::egui::FontId::new(
+                        self.config.app_settings.body_font_size,
+                        crate::app::egui::FontFamily::Proportional,
+                    ),
+                ),
+                (
+                    crate::app::egui::TextStyle::Button,
+                    crate::app::egui::FontId::new(
+                        self.config.app_settings.body_font_size,
+                        crate::app::egui::FontFamily::Proportional,
+                    ),
+                ),
+                (
+                    crate::app::egui::TextStyle::Small,
+                    crate::app::egui::FontId::new(
+                        small_font_size,
+                        crate::app::egui::FontFamily::Proportional,
+                    ),
+                ),
+            ]
+            .into();
+            ctx.set_style(style);
         }
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -984,7 +1012,21 @@ impl epi::App for AppDorothy {
                             .show(ui, |ui| {
                                 ui.style_mut().wrap = Some(false);
                                 if !self.config.app_settings.vertical_grid {
-                                    let akasha_drops = vec![Item::NoDrop, Item::HollowKey, Item::SilverCentrum, Item::GoldBrick, Item::CoronationRing, Item::ChampionMerit, Item::WeaponPlusMark1, Item::LineageRing, Item::SupremeMerit, Item::WeaponPlusMark2, Item::IntricacyRing, Item::LegendaryMerit, Item::WeaponPlusMark3];
+                                    let akasha_drops = vec![
+                                        Item::NoDrop,
+                                        Item::HollowKey,
+                                        Item::SilverCentrum,
+                                        Item::GoldBrick,
+                                        Item::CoronationRing,
+                                        Item::ChampionMerit,
+                                        Item::WeaponPlusMark1,
+                                        Item::LineageRing,
+                                        Item::SupremeMerit,
+                                        Item::WeaponPlusMark2,
+                                        Item::IntricacyRing,
+                                        Item::LegendaryMerit,
+                                        Item::WeaponPlusMark3,
+                                    ];
                                     for (pos, drop) in akasha_drops.iter().enumerate() {
                                         let chest = match drop {
                                             Item::NoDrop => ChestType::None,
@@ -1007,180 +1049,41 @@ impl epi::App for AppDorothy {
                                         }
                                     }
                                 } else {
-                                    if self.config.app_settings.active_items[0] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::NoDrop,
-                                                Raid::Akasha,
-                                                ChestType::None,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[1] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::HollowKey,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[2] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::SilverCentrum,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[3] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::GoldBrick,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[0]
-                                        || self.config.app_settings.active_items[1]
-                                        || self.config.app_settings.active_items[2]
-                                        || self.config.app_settings.active_items[3]
-                                    {
-                                        ui.end_row();
-                                    }
-                                    if self.config.app_settings.active_items[4] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::CoronationRing,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[5] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::ChampionMerit,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[6] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::WeaponPlusMark1,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[4]
-                                        || self.config.app_settings.active_items[5]
-                                        || self.config.app_settings.active_items[6]
-                                    {
-                                        ui.end_row();
-                                    }
-                                    if self.config.app_settings.active_items[7] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::LineageRing,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[8] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::SupremeMerit,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[9] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::WeaponPlusMark2,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[7]
-                                        || self.config.app_settings.active_items[8]
-                                        || self.config.app_settings.active_items[9]
-                                    {
-                                        ui.end_row();
-                                    }
-                                    if self.config.app_settings.active_items[10] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::IntricacyRing,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[11] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::LegendaryMerit,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[12] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::WeaponPlusMark3,
-                                                Raid::Akasha,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
+                                    let akasha_drops = vec![
+                                        Item::NoDrop,
+                                        Item::HollowKey,
+                                        Item::SilverCentrum,
+                                        Item::GoldBrick,
+                                        Item::CoronationRing,
+                                        Item::ChampionMerit,
+                                        Item::WeaponPlusMark1,
+                                        Item::LineageRing,
+                                        Item::SupremeMerit,
+                                        Item::WeaponPlusMark2,
+                                        Item::IntricacyRing,
+                                        Item::LegendaryMerit,
+                                        Item::WeaponPlusMark3,
+                                    ];
+                                    for (pos, drop) in akasha_drops.iter().enumerate() {
+                                        let chest = match drop {
+                                            Item::NoDrop => ChestType::None,
+                                            _ => ChestType::Blue,
+                                        };
+                                        if self.config.app_settings.active_items[pos] {
+                                            ui.vertical(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    Raid::Akasha,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                        if pos == 3 || pos == 6 || pos == 9 {
+                                            ui.end_row();
+                                        }
                                     }
                                 }
                             });
@@ -1194,148 +1097,62 @@ impl epi::App for AppDorothy {
                             .show(ui, |ui| {
                                 ui.style_mut().wrap = Some(false);
                                 if !self.config.app_settings.vertical_grid {
-                                    if self.config.app_settings.active_items[13] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::NoDrop,
-                                                Raid::PBHL,
-                                                ChestType::None,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[14] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::GoldBrick,
-                                                Raid::PBHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[13]
-                                        || self.config.app_settings.active_items[14]
-                                    {
-                                        ui.end_row();
-                                    }
-                                    if self.config.app_settings.active_items[15] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::CoronationRing,
-                                                Raid::PBHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[16] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::LineageRing,
-                                                Raid::PBHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[17] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::IntricacyRing,
-                                                Raid::PBHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[15]
-                                        || self.config.app_settings.active_items[16]
-                                        || self.config.app_settings.active_items[17]
-                                    {
-                                        ui.end_row();
+                                    let pbhl_drops = vec![
+                                        Item::NoDrop,
+                                        Item::GoldBrick,
+                                        Item::CoronationRing,
+                                        Item::LineageRing,
+                                        Item::IntricacyRing,
+                                    ];
+                                    for (pos, drop) in pbhl_drops.iter().enumerate() {
+                                        let chest = match drop {
+                                            Item::NoDrop => ChestType::None,
+                                            _ => ChestType::Blue,
+                                        };
+                                        if self.config.app_settings.active_items[pos + 13] {
+                                            ui.horizontal(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    Raid::PBHL,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                        if pos == 2 {
+                                            ui.end_row();
+                                        }
                                     }
                                 } else {
-                                    if self.config.app_settings.active_items[13] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::NoDrop,
-                                                Raid::PBHL,
-                                                ChestType::None,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[14] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::GoldBrick,
-                                                Raid::PBHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[13]
-                                        || self.config.app_settings.active_items[14]
-                                    {
-                                        ui.end_row();
-                                    }
-                                    if self.config.app_settings.active_items[15] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::CoronationRing,
-                                                Raid::PBHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[16] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::LineageRing,
-                                                Raid::PBHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[17] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::IntricacyRing,
-                                                Raid::PBHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[15]
-                                        || self.config.app_settings.active_items[16]
-                                        || self.config.app_settings.active_items[17]
-                                    {
-                                        ui.end_row();
+                                    let pbhl_drops = vec![
+                                        Item::NoDrop,
+                                        Item::GoldBrick,
+                                        Item::CoronationRing,
+                                        Item::LineageRing,
+                                        Item::IntricacyRing,
+                                    ];
+                                    for (pos, drop) in pbhl_drops.iter().enumerate() {
+                                        let chest = match drop {
+                                            Item::NoDrop => ChestType::None,
+                                            _ => ChestType::Blue,
+                                        };
+                                        if self.config.app_settings.active_items[pos + 13] {
+                                            ui.vertical(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    Raid::PBHL,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                        if pos == 2 {
+                                            ui.end_row();
+                                        }
                                     }
                                 }
                             });
@@ -1401,280 +1218,72 @@ impl epi::App for AppDorothy {
                             .show(ui, |ui| {
                                 ui.style_mut().wrap = Some(false);
                                 if !self.config.app_settings.vertical_grid {
-                                    if self.config.app_settings.active_items[18] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::NoDrop,
-                                                Raid::GOHL,
-                                                ChestType::None,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[19] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::VerdantAzurite,
-                                                Raid::GOHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[20] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::SilverCentrum,
-                                                Raid::GOHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[21] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::GoldBrick,
-                                                Raid::GOHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[18]
-                                        || self.config.app_settings.active_items[19]
-                                        || self.config.app_settings.active_items[20]
-                                        || self.config.app_settings.active_items[21]
-                                    {
-                                        ui.end_row();
-                                    }
-                                    if self.config.app_settings.active_items[22] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::CoronationRing,
-                                                Raid::GOHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[23] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::ChampionMerit,
-                                                Raid::GOHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[22]
-                                        || self.config.app_settings.active_items[23]
-                                    {
-                                        ui.end_row();
-                                    }
-                                    if self.config.app_settings.active_items[24] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::LineageRing,
-                                                Raid::GOHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[25] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::SupremeMerit,
-                                                Raid::GOHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[24]
-                                        || self.config.app_settings.active_items[25]
-                                    {
-                                        ui.end_row();
-                                    }
-                                    if self.config.app_settings.active_items[26] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::IntricacyRing,
-                                                Raid::GOHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[27] {
-                                        ui.horizontal(|ui| {
-                                            place_image_button_combo(
-                                                Item::LegendaryMerit,
-                                                Raid::GOHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
+                                    let gohl_drops = vec![
+                                        Item::NoDrop,
+                                        Item::VerdantAzurite,
+                                        Item::SilverCentrum,
+                                        Item::GoldBrick,
+                                        Item::CoronationRing,
+                                        Item::ChampionMerit,
+                                        Item::LineageRing,
+                                        Item::SupremeMerit,
+                                        Item::IntricacyRing,
+                                        Item::LegendaryMerit,
+                                    ];
+                                    for (pos, drop) in gohl_drops.iter().enumerate() {
+                                        let chest = match drop {
+                                            Item::NoDrop => ChestType::None,
+                                            _ => ChestType::Blue,
+                                        };
+                                        if self.config.app_settings.active_items[pos + 18] {
+                                            ui.horizontal(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    Raid::GOHL,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                        if pos == 3 || pos == 5 || pos == 7 || pos == 9 {
+                                            ui.end_row();
+                                        }
                                     }
                                 } else {
-                                    if self.config.app_settings.active_items[18] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::NoDrop,
-                                                Raid::GOHL,
-                                                ChestType::None,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[19] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::VerdantAzurite,
-                                                Raid::GOHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[20] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::SilverCentrum,
-                                                Raid::GOHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[21] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::GoldBrick,
-                                                Raid::GOHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[18]
-                                        || self.config.app_settings.active_items[19]
-                                        || self.config.app_settings.active_items[20]
-                                        || self.config.app_settings.active_items[21]
-                                    {
-                                        ui.end_row();
-                                    }
-                                    if self.config.app_settings.active_items[22] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::CoronationRing,
-                                                Raid::GOHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[23] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::ChampionMerit,
-                                                Raid::GOHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[22]
-                                        || self.config.app_settings.active_items[23]
-                                    {
-                                        ui.end_row();
-                                    }
-                                    if self.config.app_settings.active_items[24] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::LineageRing,
-                                                Raid::GOHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[25] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::SupremeMerit,
-                                                Raid::GOHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[24]
-                                        || self.config.app_settings.active_items[25]
-                                    {
-                                        ui.end_row();
-                                    }
-                                    if self.config.app_settings.active_items[26] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::IntricacyRing,
-                                                Raid::GOHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
-                                    }
-                                    if self.config.app_settings.active_items[27] {
-                                        ui.vertical(|ui| {
-                                            place_image_button_combo(
-                                                Item::LegendaryMerit,
-                                                Raid::GOHL,
-                                                ChestType::Blue,
-                                                &self.pbhl_honors,
-                                                &mut self.config,
-                                                ui,
-                                            );
-                                        });
+                                    let gohl_drops = vec![
+                                        Item::NoDrop,
+                                        Item::VerdantAzurite,
+                                        Item::SilverCentrum,
+                                        Item::GoldBrick,
+                                        Item::CoronationRing,
+                                        Item::ChampionMerit,
+                                        Item::LineageRing,
+                                        Item::SupremeMerit,
+                                        Item::IntricacyRing,
+                                        Item::LegendaryMerit,
+                                    ];
+                                    for (pos, drop) in gohl_drops.iter().enumerate() {
+                                        let chest = match drop {
+                                            Item::NoDrop => ChestType::None,
+                                            _ => ChestType::Blue,
+                                        };
+                                        if self.config.app_settings.active_items[pos + 18] {
+                                            ui.vertical(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    Raid::GOHL,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                        if pos == 3 || pos == 5 || pos == 7 || pos == 9 {
+                                            ui.end_row();
+                                        }
                                     }
                                 }
                             });

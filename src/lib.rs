@@ -221,20 +221,15 @@ pub fn place_percentage_label(
         .droplog
         .drop
         .iter()
-        .filter(|x| {
-                x.raid == raid
-                && x.chest != ChestType::Host
-                && x.chest != ChestType::Flip
-        })
+        .filter(|x| x.raid == raid && x.chest != ChestType::Host && x.chest != ChestType::Flip)
         .count();
-    if chest == ChestType::Host
-    {
+    if chest == ChestType::Host {
         total_raid_drops = settings
             .droplog
             .drop
             .iter()
             .filter(|x| {
-                    x.raid == raid
+                x.raid == raid
                     || (x.raid == Raid::PBHL
                         && x.chest != ChestType::Blue
                         && x.chest != ChestType::None)
@@ -294,7 +289,10 @@ pub fn place_percentage_label(
         use format_num::NumberFormat;
         let mut drop_percent_rate = format!(
             " ({})",
-            NumberFormat::new().format(".2%", items_dropped as f32 / (total_raid_drops as f32 - no_drop_count as f32))
+            NumberFormat::new().format(
+                ".2%",
+                items_dropped as f32 / (total_raid_drops as f32 - no_drop_count as f32)
+            )
         );
         if items_dropped == 0 {
             drop_percent_rate = "".to_string();
