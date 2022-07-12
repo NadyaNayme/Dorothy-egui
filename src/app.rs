@@ -151,6 +151,12 @@ impl epi::App for AppDorothy {
             ctx.set_visuals(Visuals::light());
             self.config.app_settings.dark_mode = false;
         }
+        
+        if self.config.app_settings.always_on_top {
+            frame.set_always_on_top(true)
+        } else {
+            frame.set_always_on_top(false)
+        }
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {

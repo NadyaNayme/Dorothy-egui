@@ -724,7 +724,7 @@ dependencies = [
 
 [[package]]
 name = "dorothy_egui"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "chrono",
  "console_error_panic_hook",
@@ -735,6 +735,7 @@ dependencies = [
  "format_num",
  "image",
  "js-sys",
+ "ron",
  "self_update",
  "serde",
  "tracing-wasm",
