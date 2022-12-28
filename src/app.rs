@@ -10,6 +10,7 @@ pub struct AppDorothy {
     pub name: String,
     pub droplog: DropLog,
     pub pbhl_honors: PBHLHonors,
+    pub selected_raid: Raid,
     pub config: AppSettings,
 }
 
@@ -19,6 +20,7 @@ impl Default for AppDorothy {
             name: "Dorothy".to_string(),
             droplog: DropLog::default(),
             pbhl_honors: PBHLHonors::Ignore,
+            selected_raid: Raid::None,
             config: AppSettings::default(),
         }
     }
@@ -81,6 +83,7 @@ impl epi::App for AppDorothy {
             config,
             droplog,
             pbhl_honors: pbhlhonors,
+            selected_raid: selectedraid
         } = self;
 
         if !ctx.is_using_pointer() {
@@ -542,6 +545,181 @@ impl epi::App for AppDorothy {
                                     ui,
                                 );
                             }
+
+                            if self.config.app_settings.current_ui_tab == UiTab::SixDragons
+                                || self.config.app_settings.show_all_drops
+                            {
+                                place_total_header(
+                                    Raid::Wilnas,
+                                    Item::NoDrop,
+                                    ChestType::Blue,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_percentage_label(
+                                    Raid::Wilnas,
+                                    Item::NoDrop,
+                                    ChestType::None,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_percentage_label(
+                                    Raid::Wilnas,
+                                    Item::BrimstoneEarrings,
+                                    ChestType::Blue,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_percentage_label(
+                                    Raid::Wilnas,
+                                    Item::EternitySand,
+                                    ChestType::Blue,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_total_header(
+                                    Raid::Wamdus,
+                                    Item::NoDrop,
+                                    ChestType::Blue,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_percentage_label(
+                                    Raid::Wamdus,
+                                    Item::NoDrop,
+                                    ChestType::None,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_percentage_label(
+                                    Raid::Wamdus,
+                                    Item::PermafrostEarrings,
+                                    ChestType::Blue,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_percentage_label(
+                                    Raid::Wamdus,
+                                    Item::EternitySand,
+                                    ChestType::Blue,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_total_header(
+                                    Raid::Galleon,
+                                    Item::NoDrop,
+                                    ChestType::Blue,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_percentage_label(
+                                    Raid::Galleon,
+                                    Item::NoDrop,
+                                    ChestType::None,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_percentage_label(
+                                    Raid::Galleon,
+                                    Item::BrickearthEarrings,
+                                    ChestType::Blue,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_percentage_label(
+                                    Raid::Galleon,
+                                    Item::EternitySand,
+                                    ChestType::Blue,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_total_header(
+                                    Raid::Ewiyar,
+                                    Item::NoDrop,
+                                    ChestType::Blue,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_percentage_label(
+                                    Raid::Ewiyar,
+                                    Item::NoDrop,
+                                    ChestType::None,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_percentage_label(
+                                    Raid::Ewiyar,
+                                    Item::JetstreamEarrings,
+                                    ChestType::Blue,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_percentage_label(
+                                    Raid::Ewiyar,
+                                    Item::EternitySand,
+                                    ChestType::Blue,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_total_header(
+                                    Raid::LuWoh,
+                                    Item::NoDrop,
+                                    ChestType::Blue,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_percentage_label(
+                                    Raid::LuWoh,
+                                    Item::NoDrop,
+                                    ChestType::None,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_percentage_label(
+                                    Raid::LuWoh,
+                                    Item::SunbeamEarrings,
+                                    ChestType::Blue,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_percentage_label(
+                                    Raid::LuWoh,
+                                    Item::EternitySand,
+                                    ChestType::Blue,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_total_header(
+                                    Raid::Fediel,
+                                    Item::NoDrop,
+                                    ChestType::Blue,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_percentage_label(
+                                    Raid::Fediel,
+                                    Item::NoDrop,
+                                    ChestType::None,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_percentage_label(
+                                    Raid::Fediel,
+                                    Item::NightshadeEarrings,
+                                    ChestType::Blue,
+                                    &self.config,
+                                    ui,
+                                );
+                                place_percentage_label(
+                                    Raid::Fediel,
+                                    Item::EternitySand,
+                                    ChestType::Blue,
+                                    &self.config,
+                                    ui,
+                                );
+                                
+                            }
+                            
                         });
                     ui.add_space(50.);
                     egui::warn_if_debug_build(ui);
@@ -920,6 +1098,28 @@ impl epi::App for AppDorothy {
                 {
                     frame.set_window_title("Dorothy - Hosts");
                 }
+                if self.config.app_settings.active_items_2[25]
+                    && ui
+                    .selectable_value(
+                        &mut self.config.app_settings.current_ui_tab,
+                        UiTab::SixDragons,
+                        "6 Dragons",
+                    )
+                    .changed()
+                {
+                    frame.set_window_title("Dorothy - 6 Dragons");
+                }
+                if self.config.app_settings.active_items_2[26]
+                    && ui
+                    .selectable_value(
+                        &mut self.config.app_settings.current_ui_tab,
+                        UiTab::EternitySand,
+                        "Eternity Sands",
+                    )
+                    .changed()
+                {
+                    frame.set_window_title("Dorothy - Eternity Sands");
+                }
             });
 
             ui.add_space(30.);
@@ -951,6 +1151,11 @@ impl epi::App for AppDorothy {
                                         .single_pulls_amount
                                         .parse::<f32>()
                                         .unwrap_or_default(),
+                                    self.config
+                                        .app_settings
+                                        .shrimp_amount
+                                        .parse::<f32>()
+                                        .unwrap_or_default(),
                                 )
                             }
                         });
@@ -977,6 +1182,11 @@ impl epi::App for AppDorothy {
                                         .single_pulls_amount
                                         .parse::<f32>()
                                         .unwrap_or_default(),
+                                    self.config
+                                        .app_settings
+                                        .shrimp_amount
+                                        .parse::<f32>()
+                                        .unwrap_or_default(),
                                 )
                             }
                         });
@@ -1001,6 +1211,42 @@ impl epi::App for AppDorothy {
                                     self.config
                                         .app_settings
                                         .single_pulls_amount
+                                        .parse::<f32>()
+                                        .unwrap_or_default(),
+                                    self.config
+                                        .app_settings
+                                        .shrimp_amount
+                                        .parse::<f32>()
+                                        .unwrap_or_default(),
+                                )
+                            }
+                        });
+                        ui.add_space(5.);
+                        ui.horizontal(|ui| {
+                            ui.label("Ebi  Fry: ");
+                            let response = ui.add(egui::TextEdit::singleline(
+                                &mut self.config.app_settings.shrimp_amount,
+                            ));
+                            if response.changed() {
+                                self.config.app_settings.total_pulls = calculate_pulls(
+                                    self.config
+                                        .app_settings
+                                        .crystals_amount
+                                        .parse::<f32>()
+                                        .unwrap_or_default(),
+                                    self.config
+                                        .app_settings
+                                        .ten_pulls_amount
+                                        .parse::<f32>()
+                                        .unwrap_or_default(),
+                                    self.config
+                                        .app_settings
+                                        .single_pulls_amount
+                                        .parse::<f32>()
+                                        .unwrap_or_default(),
+                                    self.config
+                                        .app_settings
+                                        .shrimp_amount
                                         .parse::<f32>()
                                         .unwrap_or_default(),
                                 )
@@ -1475,6 +1721,296 @@ impl epi::App for AppDorothy {
                                         });
                                     }
                                 }
+                            });
+                    }
+                    if self.config.app_settings.current_ui_tab == UiTab::SixDragons {
+                        egui::Grid::new("six_dragons_item_grid")
+                            .spacing((
+                                self.config.app_settings.grid_spacing_x,
+                                self.config.app_settings.grid_spacing_y,
+                            ))
+                            .show(ui, |ui| {
+                                ui.style_mut().wrap = Some(false);
+                                if !self.config.app_settings.vertical_grid {
+                                    let six_dragon_drops = vec![
+                                        Item::NoDrop,
+                                        Item::BrimstoneEarrings,
+                                        Item::PermafrostEarrings,
+                                        Item::BrickearthEarrings,
+                                        Item::JetstreamEarrings,
+                                        Item::SunbeamEarrings,
+                                        Item::NightshadeEarrings,
+                                        Item::EternitySand,
+                                    ];
+                                    for (pos, drop) in six_dragon_drops.iter().enumerate() {
+                                        let chest = match drop {
+                                            Item::NoDrop => ChestType::None,
+                                            _ => ChestType::Blue,
+                                        };
+                                        if pos == 0 {
+                                            ui.horizontal(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    self.selected_raid,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                        if pos == 1 {
+                                            ui.horizontal(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    Raid::Wilnas,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                        if pos == 2 {
+                                            ui.horizontal(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    Raid::Wamdus,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                        if pos == 3 {
+                                            ui.horizontal(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    Raid::Galleon,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                        if pos == 4 {
+                                            ui.horizontal(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    Raid::Ewiyar,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                        if pos == 5 {
+                                            ui.horizontal(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    Raid::LuWoh,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                        if pos == 6 {
+                                            ui.horizontal(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    Raid::Fediel,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                        if pos == 7 {
+                                            ui.horizontal(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    self.selected_raid,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                    if pos == 0 || pos == 3 || pos == 6 {
+                                        ui.end_row();
+                                    }
+                                    }
+                                } else {
+                                    let six_dragon_drops = vec![
+                                        Item::NoDrop,
+                                        Item::BrimstoneEarrings,
+                                        Item::PermafrostEarrings,
+                                        Item::BrickearthEarrings,
+                                        Item::JetstreamEarrings,
+                                        Item::SunbeamEarrings,
+                                        Item::NightshadeEarrings,
+                                        Item::EternitySand,
+                                    ];
+                                    for (pos, drop) in six_dragon_drops.iter().enumerate() {
+                                        let chest = match drop {
+                                            Item::NoDrop => ChestType::None,
+                                            _ => ChestType::Blue,
+                                        };
+                                        if pos == 0 {
+                                            ui.vertical(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    self.selected_raid,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                        if pos == 1 {
+                                            ui.vertical(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    Raid::Wilnas,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                        if pos == 2 {
+                                            ui.vertical(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    Raid::Wamdus,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                        if pos == 3 {
+                                            ui.vertical(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    Raid::Galleon,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                        if pos == 4 {
+                                            ui.vertical(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    Raid::Ewiyar,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                        if pos == 5 {
+                                            ui.vertical(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    Raid::LuWoh,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                        if pos == 6 {
+                                            ui.vertical(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    Raid::Fediel,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                        if pos == 7 {
+                                            ui.vertical(|ui| {
+                                                place_image_button_combo(
+                                                    *drop,
+                                                    self.selected_raid,
+                                                    chest,
+                                                    &self.pbhl_honors,
+                                                    &mut self.config,
+                                                    ui,
+                                                )
+                                            });
+                                        }
+                                        if pos == 0 || pos == 3 || pos == 6 {
+                                            ui.end_row();
+                                        }
+                                    }
+                                }
+                            });
+
+                        ui.add_space(20.);
+                        ui.heading("Current Raid");
+                        ui.label("Select the current raid you are farming.");
+                        ui.add_space(5.);
+
+                        egui::Grid::new("current_raid_grid")
+                            .spacing((15., 10.))
+                            .show(ui, |ui| {
+                                ui.style_mut().wrap = Some(false);
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::None,
+                                    "Don't Care",
+                                );
+                                ui.end_row();
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::Wilnas,
+                                    "Wilnas",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::Wamdus,
+                                    "Wamdus",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::Galleon,
+                                    "Galleon",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::Ewiyar,
+                                    "Ewiyar",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::LuWoh,
+                                    "Lu Woh",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::Fediel,
+                                    "Fediel",
+                                );
                             });
                     }
                 });
