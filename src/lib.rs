@@ -35,6 +35,13 @@ pub static P_MARK_1: &[u8] = include_bytes!("./images/weapon_plus_mark_1.png");
 pub static P_MARK_2: &[u8] = include_bytes!("./images/weapon_plus_mark_2.png");
 pub static P_MARK_3: &[u8] = include_bytes!("./images/weapon_plus_mark_3.png");
 pub static GOLD_BAR: &[u8] = include_bytes!("./images/hihi.png");
+pub static FIRE_EARRING: &[u8] = include_bytes!("./images/fire_earrings.png");
+pub static WATER_EARRING: &[u8] = include_bytes!("./images/water_earrings.png");
+pub static EARTH_EARRING: &[u8] = include_bytes!("./images/earth_earrings.png");
+pub static WIND_EARRING: &[u8] = include_bytes!("./images/wind_earrings.png");
+pub static LIGHT_EARRING: &[u8] = include_bytes!("./images/light_earrings.png");
+pub static DARK_EARRING: &[u8] = include_bytes!("./images/dark_earrings.png");
+pub static ETERNITY_SAND: &[u8] = include_bytes!("./images/eternity_sand.png");
 pub static UBHL_HOST_BAR: &[u8] = include_bytes!("./images/ubhl_host.png");
 pub static UBHL_FLIP_BAR: &[u8] = include_bytes!("./images/ubhl_flip.png");
 pub static PBHL_HOST_BAR: &[u8] = include_bytes!("./images/pbhl_host.png");
@@ -114,12 +121,12 @@ pub fn self_update() -> Result<(), Box<dyn ::std::error::Error>> {
     Ok(())
 }
 
-pub fn calculate_pulls(crystals: f32, tenners: f32, singles: f32) -> String {
+pub fn calculate_pulls(crystals: f32, tenners: f32, singles: f32, shrimps: f32) -> String {
     let crystal_ten_pulls = ((crystals / 3000.0).floor()) * 10.0;
     let remaining_crystals_for_single_pulls = crystals % 3000.0;
     let crystal_single_pulls = (remaining_crystals_for_single_pulls / 300.0).floor();
     let total_pulls =
-        (crystal_ten_pulls + crystal_single_pulls + (tenners * 10.0) + singles).to_string();
+        (crystal_ten_pulls + crystal_single_pulls + (tenners * 10.0) + singles + shrimps).to_string();
     let total = total_pulls;
     let spark_percentage = get_percentage(total.parse::<f32>().unwrap(), 300.0);
     "Total: ".to_owned() + &total + " pulls (" + &spark_percentage + ")"
@@ -166,6 +173,7 @@ pub fn load_icon(icon_bytes: &[u8]) -> Option<epi::IconData> {
     }
 }
 
+//noinspection ALL
 pub fn place_total_header(
     raid: Raid,
     _item: Item,
@@ -203,6 +211,27 @@ pub fn place_total_header(
         Raid::Huanglong => "Hosts - ".to_string(),
         Raid::Qilin => "Hosts - ".to_string(),
         Raid::HLQL => "Hosts - ".to_string(),
+        Raid::Wilnas => "Wilnas - ".to_string(),
+        Raid::Wamdus => "Wamdus - ".to_string(),
+        Raid::Galleon => "Galleon - ".to_string(),
+        Raid::Ewiyar => "Ewiyar - ".to_string(),
+        Raid::LuWoh => "Lu Woh - ".to_string(),
+        Raid::Fediel => "Fediel - ".to_string(),
+        Raid::Atum => "Atum - ".to_string(),
+        Raid::Tefnut => "Tefnut - ".to_string(),
+        Raid::Bennu => "Bennu- ".to_string(),
+        Raid::Ra => "Ra - ".to_string(),
+        Raid::Horus => "Horus - ".to_string(),
+        Raid::Osiris => "Osiris - ".to_string(),
+        Raid::TiamatMalice => "Tiamat Malice - ".to_string(),
+        Raid::LeviathanMalice => "Leviathan Malice - ".to_string(),
+        Raid::Phronesis => "Phronesis - ".to_string(),
+        Raid::LuminieraMalice => "Luminiera Malice - ".to_string(),
+        Raid::AnimaAnimusCore => "Anima-Animus Core - ".to_string(),
+        Raid::Mugen => "Mugen - ".to_string(),
+        Raid::Diaspora => "Diaspora - ".to_string(),
+        Raid::Siegfried => "Siegfried - ".to_string(),
+        Raid::SUB => "Super Ultimate Bahamut".to_string(),
         Raid::None => "".to_string(),
     };
     ui.add_space(20.);
@@ -257,6 +286,13 @@ pub fn place_percentage_label(
         Item::WeaponPlusMark1 => "+1 Weapon Mark: ".to_string(),
         Item::WeaponPlusMark2 => "+2 Weapon Mark: ".to_string(),
         Item::WeaponPlusMark3 => "+3 Weapon Mark: ".to_string(),
+        Item::BrimstoneEarrings => "Brimstone Earrings: ".to_string(),
+        Item::PermafrostEarrings => "Permafrost Earrings: ".to_string(),
+        Item::BrickearthEarrings => "Brickearth Earrings: ".to_string(),
+        Item::JetstreamEarrings => "Jetstream Earrings: ".to_string(),
+        Item::SunbeamEarrings => "Sunbeam Earrings: ".to_string(),
+        Item::NightshadeEarrings => "NIghtshade Earrings: ".to_string(),
+        Item::EternitySand => "Eternity Sand: ".to_string(),
     };
     if (raid == Raid::PBHL && chest == ChestType::Host)
         || raid == Raid::Huanglong
@@ -326,6 +362,13 @@ pub fn place_image_button_combo(
         Item::WeaponPlusMark1 => "weapon_plus_mark_1.png",
         Item::WeaponPlusMark2 => "weapon_plus_mark_2.png",
         Item::WeaponPlusMark3 => "weapon_plus_mark_3.png",
+        Item::BrimstoneEarrings => "fire_earrings.png",
+        Item::PermafrostEarrings => "water_earrings.png",
+        Item::BrickearthEarrings => "earth_earrings.png",
+        Item::JetstreamEarrings => "wind_earrings.png",
+        Item::SunbeamEarrings => "light_earrings.png",
+        Item::NightshadeEarrings => "dark_earrings.png",
+        Item::EternitySand => "eternity_sand.png",
     };
     let mut label_text = match item {
         Item::NoDrop => "No Drop",
@@ -342,6 +385,13 @@ pub fn place_image_button_combo(
         Item::WeaponPlusMark1 => "+1 Weapon Mark",
         Item::WeaponPlusMark2 => "+2 Weapon Mark",
         Item::WeaponPlusMark3 => "+3 Weapon Mark",
+        Item::BrimstoneEarrings => "Brimstone Earrings",
+        Item::PermafrostEarrings => "Permafrost Earrings",
+        Item::BrickearthEarrings => "Brickearth Earrings",
+        Item::JetstreamEarrings => "Jetstream Earrings",
+        Item::SunbeamEarrings => "Sunbeam Earrings",
+        Item::NightshadeEarrings => "NIghtshade Earrings",
+        Item::EternitySand => "Eternity Sand",
     };
     if chest == ChestType::Host {
         label_text = match raid {
@@ -375,6 +425,13 @@ pub fn place_image_button_combo(
         Item::WeaponPlusMark1 => P_MARK_1,
         Item::WeaponPlusMark2 => P_MARK_2,
         Item::WeaponPlusMark3 => P_MARK_3,
+        Item::BrimstoneEarrings => FIRE_EARRING,
+        Item::PermafrostEarrings => WATER_EARRING,
+        Item::BrickearthEarrings => EARTH_EARRING,
+        Item::JetstreamEarrings => WIND_EARRING,
+        Item::NightshadeEarrings => DARK_EARRING,
+        Item::SunbeamEarrings => LIGHT_EARRING,
+        Item::EternitySand => ETERNITY_SAND,
     };
     if chest == ChestType::Host {
         if raid == Raid::Huanglong {
@@ -555,6 +612,8 @@ pub enum UiTab {
     PBHL,
     GOHL,
     Hosts,
+    SixDragons,
+    EternitySand,
     #[default]
     None,
 }
@@ -568,6 +627,27 @@ pub enum Raid {
     Huanglong,
     Qilin,
     HLQL,
+    Wilnas,
+    Wamdus,
+    Galleon,
+    Ewiyar,
+    LuWoh,
+    Fediel,
+    Atum,
+    Tefnut,
+    Bennu,
+    Ra,
+    Horus,
+    Osiris,
+    TiamatMalice,
+    LeviathanMalice,
+    Phronesis,
+    LuminieraMalice,
+    AnimaAnimusCore,
+    Mugen,
+    Diaspora,
+    Siegfried,
+    SUB,
     #[default]
     None,
 }
@@ -583,6 +663,27 @@ impl fmt::Display for Raid {
             Raid::Huanglong => write!(f, "Huanglong"),
             Raid::Qilin => write!(f, "Qilin"),
             Raid::HLQL => write!(f, "HLQL"),
+            Raid::Wilnas => write!(f, "Wilnas"),
+            Raid::Wamdus => write!(f, "Wamdus"),
+            Raid::Galleon => write!(f, "Galleon"),
+            Raid::Ewiyar => write!(f, "Ewiyar"),
+            Raid::LuWoh => write!(f, "Lu Woh"),
+            Raid::Fediel => write!(f, "Fediel"),
+            Raid::Atum => write!(f, "Atum"),
+            Raid::Tefnut => write!(f, "Tefnut"),
+            Raid::Bennu => write!(f, "Bennu"),
+            Raid::Ra => write!(f, "Ra"),
+            Raid::Horus => write!(f, "Horus"),
+            Raid::Osiris => write!(f, "Osiris"),
+            Raid::TiamatMalice => write!(f, "Tiamat Malice"),
+            Raid::LeviathanMalice => write!(f, "Leviathan Malice"),
+            Raid::Phronesis => write!(f, "Phronesis"),
+            Raid::LuminieraMalice => write!(f, "Luminiera Malice"),
+            Raid::AnimaAnimusCore => write!(f, "Anima-Animus Core"),
+            Raid::Mugen => write!(f, "Mugen"),
+            Raid::Diaspora => write!(f, "Diaspora"),
+            Raid::Siegfried => write!(f, "Siegfried"),
+            Raid::SUB => write!(f, "Super Ultimate Bahamut"),
             Raid::None => write!(f, ""),
         }
     }
@@ -596,6 +697,7 @@ pub enum ChestType {
     None,
     #[default]
     Blue,
+    Gold,
 }
 
 impl fmt::Display for ChestType {
@@ -606,6 +708,7 @@ impl fmt::Display for ChestType {
             ChestType::Flip => write!(f, "Flip Chest"),
             ChestType::None => write!(f, ""),
             ChestType::Blue => write!(f, "Blue Chest"),
+            ChestType::Gold => write!(f, "Gold Chest"),
         }
     }
 }
@@ -625,6 +728,13 @@ pub enum Item {
     LineageRing,
     IntricacyRing,
     GoldBrick,
+    BrimstoneEarrings,
+    PermafrostEarrings,
+    BrickearthEarrings,
+    JetstreamEarrings,
+    SunbeamEarrings,
+    NightshadeEarrings,
+    EternitySand,
     #[default]
     NoDrop,
 }
@@ -646,6 +756,13 @@ impl fmt::Display for Item {
             Item::LineageRing => write!(f, "Lineage Ring"),
             Item::IntricacyRing => write!(f, "Intricacy Ring"),
             Item::GoldBrick => write!(f, "Gold Brick"),
+            Item::BrimstoneEarrings => write!(f, "Brimstone Earrings"),
+            Item::PermafrostEarrings => write!(f, "Permafrost Earrings"),
+            Item::BrickearthEarrings => write!(f, "Brickearth Earrings"),
+            Item::JetstreamEarrings => write!(f, "Jetstream Earrings"),
+            Item::SunbeamEarrings => write!(f, "Sunbeam Earrings"),
+            Item::NightshadeEarrings => write!(f, "Nightshade Earrings"),
+            Item::EternitySand => write!(f, "Eternity Sand"),
         }
     }
 }
@@ -723,6 +840,7 @@ pub struct DorothyConfig {
     pub crystals_amount: String,
     pub ten_pulls_amount: String,
     pub single_pulls_amount: String,
+    pub shrimp_amount: String,
     pub total_pulls: String,
     #[serde(default)]
     pub current_ui_tab: UiTab,
@@ -755,6 +873,7 @@ impl Default for DorothyConfig {
             crystals_amount: "0".to_string(),
             ten_pulls_amount: "0".to_string(),
             single_pulls_amount: "0".to_string(),
+            shrimp_amount: "0".to_string(),
             total_pulls: "".to_string(),
         }
     }
@@ -787,6 +906,7 @@ impl DorothyConfig {
             crystals_amount: "0".to_string(),
             ten_pulls_amount: "0".to_string(),
             single_pulls_amount: "0".to_string(),
+            shrimp_amount: "0".to_string(),
             total_pulls: "".to_string(),
         }
     }
