@@ -575,7 +575,7 @@ impl epi::App for AppDorothy {
                                 place_percentage_label(
                                     Raid::Wilnas,
                                     Item::EternitySand,
-                                    ChestType::Blue,
+                                    ChestType::Gold,
                                     &self.config,
                                     ui,
                                 );
@@ -603,7 +603,7 @@ impl epi::App for AppDorothy {
                                 place_percentage_label(
                                     Raid::Wamdus,
                                     Item::EternitySand,
-                                    ChestType::Blue,
+                                    ChestType::Gold,
                                     &self.config,
                                     ui,
                                 );
@@ -631,7 +631,7 @@ impl epi::App for AppDorothy {
                                 place_percentage_label(
                                     Raid::Galleon,
                                     Item::EternitySand,
-                                    ChestType::Blue,
+                                    ChestType::Gold,
                                     &self.config,
                                     ui,
                                 );
@@ -659,7 +659,7 @@ impl epi::App for AppDorothy {
                                 place_percentage_label(
                                     Raid::Ewiyar,
                                     Item::EternitySand,
-                                    ChestType::Blue,
+                                    ChestType::Gold,
                                     &self.config,
                                     ui,
                                 );
@@ -687,7 +687,7 @@ impl epi::App for AppDorothy {
                                 place_percentage_label(
                                     Raid::LuWoh,
                                     Item::EternitySand,
-                                    ChestType::Blue,
+                                    ChestType::Gold,
                                     &self.config,
                                     ui,
                                 );
@@ -715,7 +715,7 @@ impl epi::App for AppDorothy {
                                 place_percentage_label(
                                     Raid::Fediel,
                                     Item::EternitySand,
-                                    ChestType::Blue,
+                                    ChestType::Gold,
                                     &self.config,
                                     ui,
                                 );
