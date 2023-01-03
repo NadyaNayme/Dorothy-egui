@@ -223,11 +223,15 @@ pub fn place_total_header(
         Raid::Ra => "Ra - ".to_string(),
         Raid::Horus => "Horus - ".to_string(),
         Raid::Osiris => "Osiris - ".to_string(),
+        Raid::TiamatMalice => "Tiamat Malice - ".to_string(),
+        Raid::LeviathanMalice => "Leviathan Malice - ".to_string(),
+        Raid::Phronesis => "Phronesis - ".to_string(),
+        Raid::LuminieraMalice => "Luminiera Malice - ".to_string(),
+        Raid::AnimaAnimusCore => "Anima-Animus Core - ".to_string(),
         Raid::Mugen => "Mugen - ".to_string(),
         Raid::Diaspora => "Diaspora - ".to_string(),
         Raid::Siegfried => "Siegfried - ".to_string(),
         Raid::SUB => "Super Ultimate Bahamut".to_string(),
-        
         Raid::None => "".to_string(),
     };
     ui.add_space(20.);
@@ -635,6 +639,11 @@ pub enum Raid {
     Ra,
     Horus,
     Osiris,
+    TiamatMalice,
+    LeviathanMalice,
+    Phronesis,
+    LuminieraMalice,
+    AnimaAnimusCore,
     Mugen,
     Diaspora,
     Siegfried,
@@ -666,6 +675,11 @@ impl fmt::Display for Raid {
             Raid::Ra => write!(f, "Ra"),
             Raid::Horus => write!(f, "Horus"),
             Raid::Osiris => write!(f, "Osiris"),
+            Raid::TiamatMalice => write!(f, "Tiamat Malice"),
+            Raid::LeviathanMalice => write!(f, "Leviathan Malice"),
+            Raid::Phronesis => write!(f, "Phronesis"),
+            Raid::LuminieraMalice => write!(f, "Luminiera Malice"),
+            Raid::AnimaAnimusCore => write!(f, "Anima-Animus Core"),
             Raid::Mugen => write!(f, "Mugen"),
             Raid::Diaspora => write!(f, "Diaspora"),
             Raid::Siegfried => write!(f, "Siegfried"),
@@ -683,6 +697,7 @@ pub enum ChestType {
     None,
     #[default]
     Blue,
+    Gold,
 }
 
 impl fmt::Display for ChestType {
@@ -693,6 +708,7 @@ impl fmt::Display for ChestType {
             ChestType::Flip => write!(f, "Flip Chest"),
             ChestType::None => write!(f, ""),
             ChestType::Blue => write!(f, "Blue Chest"),
+            ChestType::Gold => write!(f, "Gold Chest"),
         }
     }
 }

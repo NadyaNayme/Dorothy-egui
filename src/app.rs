@@ -232,9 +232,11 @@ impl epi::App for AppDorothy {
                     ui.add_space(3.);
                     ui.hyperlink_to("GBF Wiki", "https://gbf.wiki/Main_Page");
                     ui.add_space(3.);
-                    ui.hyperlink_to("Online Tools", "https://www.granblue.party/");
+                    ui.hyperlink_to("Team Building/Sharing", "https://app.granblue.team");
                     ui.add_space(3.);
                     ui.hyperlink_to("Raidfinder", "https://gbf.life/");
+                    ui.add_space(3.);
+                    ui.hyperlink_to("Various Calculators & Tools", "https://www.granblue.party/");
                     ui.add_space(3.);
                     ui.hyperlink_to("/r/Granblue_en", "https://www.reddit.com/r/Granblue_en/");
                 });
@@ -719,7 +721,21 @@ impl epi::App for AppDorothy {
                                 );
                                 
                             }
-                            
+                            if self.config.app_settings.current_ui_tab == UiTab::EternitySand
+                                || self.config.app_settings.show_all_drops
+                            {
+
+                                let total_drops_of_item = &self.config
+                                    .droplog
+                                    .drop
+                                    .iter()
+                                    .filter(|x| x.item == Item::EternitySand)
+                                    .count();
+                                
+                                ui.add_space(20.);
+                                ui.heading("Eternity Sands (All Raids) - ".to_owned() + &total_drops_of_item.to_string());
+                                ui.add_space(5.);
+                            }
                         });
                     ui.add_space(50.);
                     egui::warn_if_debug_build(ui);
@@ -2010,6 +2026,196 @@ impl epi::App for AppDorothy {
                                     &mut self.selected_raid,
                                     Raid::Fediel,
                                     "Fediel",
+                                );
+                            });
+                    }
+                    if self.config.app_settings.current_ui_tab == UiTab::EternitySand {
+                        egui::Grid::new("six_dragons_item_grid")
+                            .spacing((
+                                self.config.app_settings.grid_spacing_x,
+                                self.config.app_settings.grid_spacing_y,
+                            ))
+                            .show(ui, |ui| {
+                                ui.style_mut().wrap = Some(false);
+                                if !self.config.app_settings.vertical_grid {
+                                    let sand_drops = vec![
+                                        Item::EternitySand,
+                                    ];
+                                    for (pos, drop) in sand_drops.iter().enumerate() {
+                                        let chest = match drop {
+                                            Item::NoDrop => ChestType::None,
+                                            _ => ChestType::Gold,
+                                        };
+                                        ui.horizontal(|ui| {
+                                            place_image_button_combo(
+                                                *drop,
+                                                self.selected_raid,
+                                                chest,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            )
+                                        });
+                                        
+                                    }
+                                } else {
+                                    let sand_drops = vec![
+                                        Item::EternitySand,
+                                    ];
+                                    for (pos, drop) in sand_drops.iter().enumerate() {
+                                        let chest = match drop {
+                                            Item::NoDrop => ChestType::None,
+                                            _ => ChestType::Gold,
+                                        };
+                                      
+                                        ui.vertical(|ui| {
+                                            place_image_button_combo(
+                                                *drop,
+                                                self.selected_raid,
+                                                chest,
+                                                &self.pbhl_honors,
+                                                &mut self.config,
+                                                ui,
+                                            )
+                                        });
+                                    }
+                                }
+                            });
+
+                        ui.add_space(20.);
+                        ui.heading("Current Raid");
+                        ui.label("Select the current raid you are farming.");
+                        ui.add_space(5.);
+
+                        egui::Grid::new("current_raid_grid")
+                            .spacing((15., 10.))
+                            .show(ui, |ui| {
+                                ui.style_mut().wrap = Some(false);
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::None,
+                                    "Don't Care",
+                                );
+                                ui.end_row();
+                                ui.label("Ennead Raids");
+                                ui.end_row();
+                                ui.add_space(20.);
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::Atum,
+                                    "Atum",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::Tefnut,
+                                    "Tefnut",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::Bennu,
+                                    "Bennu",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::Ra,
+                                    "Ra",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::Horus,
+                                    "Horus",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::Osiris,
+                                    "Osiris",
+                                );
+                                ui.end_row();
+                                ui.label("Six Dragon Raids");
+                                ui.end_row();
+                                ui.add_space(20.);
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::Wilnas,
+                                    "Wilnas",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::Wamdus,
+                                    "Wamdus",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::Galleon,
+                                    "Galleon",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::Ewiyar,
+                                    "Ewiyar",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::LuWoh,
+                                    "Lu Woh",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::Fediel,
+                                    "Fediel",
+                                );
+                                ui.end_row();
+                                ui.label("Malice & Menace Raids");
+                                ui.end_row();
+                                ui.add_space(20.);
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::TiamatMalice,
+                                    "Tiamat Malice",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::LeviathanMalice,
+                                    "Leviathan Malice",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::Phronesis,
+                                    "Phronesis",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::LuminieraMalice,
+                                    "Luminiera Malice",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::AnimaAnimusCore,
+                                    "Anima-Animus Core",
+                                );
+                                ui.end_row();
+                                ui.label("8★ Impossible Raids");
+                                ui.end_row();
+                                ui.add_space(20.);
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::Mugen,
+                                    "Mugen",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::Diaspora,
+                                    "Diaspora",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::Siegfried,
+                                    "Siegfried",
+                                );
+                                ui.selectable_value(
+                                    &mut self.selected_raid,
+                                    Raid::SUB,
+                                    "Super Ultimate Bahamut",
                                 );
                             });
                     }
