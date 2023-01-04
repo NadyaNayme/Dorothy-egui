@@ -44,24 +44,27 @@ impl epi::App for AppDorothy {
             *self = epi::get_value(storage, epi::APP_KEY).unwrap_or_default()
         }
 
-        #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
-        let need_to_update = check_for_update().unwrap();
-        #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
-        match need_to_update {
-            ReleaseStatus::NewVersion => {
-                let update_worked = self_update();
-                match update_worked {
-                    Ok(()) => {
-                        self.config.app_settings.auto_update_status = 1;
-                    }
-                    Err(e) => {
-                        println!("{}", e);
-                        self.config.app_settings.auto_update_status = 2;
+        if self.config.app_settings.auto_update_enabled
+        {
+            #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))] 
+                let need_to_update = check_for_update().unwrap();
+            #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
+            match need_to_update {
+                ReleaseStatus::NewVersion => {
+                    let update_worked = self_update();
+                    match update_worked {
+                        Ok(()) => {
+                            self.config.app_settings.auto_update_status = 1;
+                        }
+                        Err(e) => {
+                            println!("{}", e);
+                            self.config.app_settings.auto_update_status = 2;
+                        }
                     }
                 }
-            }
-            ReleaseStatus::UpToDate => {
-                self.config.app_settings.auto_update_status = 3;
+                ReleaseStatus::UpToDate => {
+                    self.config.app_settings.auto_update_status = 3;
+                }
             }
         }
     }
@@ -128,23 +131,26 @@ impl epi::App for AppDorothy {
                     ),
                 ),
             ]
-            .into();
+                .into();
             ctx.set_style(style);
         }
 
         #[cfg(not(target_arch = "wasm32"))]
-        if self.config.app_settings.auto_update_status == 1 {
-            egui::Window::new("Updated!").show(ctx, |ui| {
+        if self.config.app_settings.auto_update_enabled
+        {
+            if self.config.app_settings.auto_update_status == 1 {
+                egui::Window::new("Updated!").show(ctx, |ui| {
                     ui.heading("Please Restart!");
                     ui.add_space(5.);
                     ui.label("Dorothy has automatically updated to a new release. A restart is required. Please check the Github repo for what has changed.");
                 });
-        } else if self.config.app_settings.auto_update_status == 2 {
-            egui::Window::new("Update Failed...").show(ctx, |ui| {
+            } else if self.config.app_settings.auto_update_status == 2 {
+                egui::Window::new("Update Failed...").show(ctx, |ui| {
                     ui.heading("404: Dorothy's Brain Not Found");
                     ui.add_space(5.);
                     ui.label("Dorothy has failed to update. Please open an issue on Github for Nadya to investigate.");
                 });
+            }
         }
 
         if self.config.app_settings.dark_mode {
@@ -1119,13 +1125,13 @@ impl epi::App for AppDorothy {
                     .selectable_value(
                         &mut self.config.app_settings.current_ui_tab,
                         UiTab::SixDragons,
-                        "6 Dragons",
+                        "Six Dragons",
                     )
                     .changed()
                 {
                     frame.set_window_title("Dorothy - 6 Dragons");
                 }
-                if self.config.app_settings.active_items_2[26]
+                if self.config.app_settings.active_items_2[27]
                     && ui
                     .selectable_value(
                         &mut self.config.app_settings.current_ui_tab,
@@ -2220,6 +2226,36 @@ impl epi::App for AppDorothy {
                             });
                     }
                 });
+
+            // Hotkey controls
+            if ui.input().key_pressed(egui::Key::R) && ui.input().modifiers.shift_only() {
+                self.config.app_settings.right_panel_visible = !self.config.app_settings.right_panel_visible
+            }
+
+            if ui.input().key_pressed(egui::Key::D) && ui.input().modifiers.shift_only() {
+                self.config.app_settings.left_panel_visible = !self.config.app_settings.left_panel_visible
+            }
+
+            if ui.input().key_pressed(egui::Key::A) && ui.input().modifiers.shift_only() {
+                self.config.app_settings.always_on_top = !self.config.app_settings.always_on_top
+            }
+
+            if ui.input().key_pressed(egui::Key::L) && ui.input().modifiers.shift_only() {
+                self.config.app_settings.dark_mode = !self.config.app_settings.dark_mode
+            }
+            
+            if ui.input().key_pressed(egui::Key::E) && ui.input().modifiers.shift_only() {
+                let _ = export(self.config.droplog.clone());
+                if self.config.app_settings.reset_on_export {
+                    self.config.droplog.drop = DropLog::reset();
+                }
+            }
+
+            if ui.input().key_pressed(egui::Key::S) && ui.input().modifiers.shift_only() {
+                self.config.app_settings.toggle_active_items = !self.config.app_settings.toggle_active_items
+            }
+            
+            
         });
         if !self.config.app_settings.button_label_combo[0]
             && !self.config.app_settings.button_label_combo[1]
@@ -2273,6 +2309,16 @@ impl epi::App for AppDorothy {
                             &mut self.config.app_settings.active_items_2[24],
                             "Show Hosts Tab",
                         );
+                     ui
+                    .checkbox(
+                        &mut self.config.app_settings.active_items_2[25],
+                        "Show Six Dragons Tab",
+                    );
+                    ui
+                    .checkbox(
+                        &mut self.config.app_settings.active_items_2[27],
+                        "Show Eternity Sands Tab",
+                    );
                     ui
                         .checkbox(
                             &mut self.config.app_settings.button_label_combo[0],
